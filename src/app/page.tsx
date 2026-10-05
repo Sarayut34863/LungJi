@@ -432,6 +432,8 @@ export default function HomePage() {
   const [paperSize, setPaperSize] = useState<"a4" | "letter">("a4");
   const [cardGapMm, setCardGapMm] = useState<number>(0);
   const [cuttingGuide, setCuttingGuide] = useState<"hairline" | "dashed" | "none">("hairline");
+  const [gridCols, setGridCols] = useState<number>(3);
+  const [gridRows, setGridRows] = useState<number>(3);
 
   const totalPrintCardCount = Object.values(selectedCards).reduce((acc, c) => acc + c.quantity, 0);
 
@@ -1384,6 +1386,10 @@ export default function HomePage() {
           setCardGapMm={setCardGapMm}
           cuttingGuide={cuttingGuide}
           setCuttingGuide={setCuttingGuide}
+          gridCols={gridCols}
+          setGridCols={setGridCols}
+          gridRows={gridRows}
+          setGridRows={setGridRows}
         />
       )}
 
@@ -1395,6 +1401,8 @@ export default function HomePage() {
           paperSize={paperSize}
           cardGapMm={cardGapMm}
           cuttingGuide={cuttingGuide}
+          gridCols={gridCols}
+          gridRows={gridRows}
         />
       )}
     </div>
@@ -1737,6 +1745,10 @@ interface PrintStudioModalProps {
   setCardGapMm: (gap: number) => void;
   cuttingGuide: "hairline" | "dashed" | "none";
   setCuttingGuide: (guide: "hairline" | "dashed" | "none") => void;
+  gridCols: number;
+  setGridCols: (cols: number) => void;
+  gridRows: number;
+  setGridRows: (rows: number) => void;
 }
 
 function PrintStudioModal({
@@ -1753,7 +1765,14 @@ function PrintStudioModal({
   setCardGapMm,
   cuttingGuide,
   setCuttingGuide,
+  gridCols,
+  setGridCols,
+  gridRows,
+  setGridRows,
 }: PrintStudioModalProps) {
+  // Number of cards per sheet based on grid layout
+  const cardsPerSheet = gridCols * gridRows;
+
   // Flatten card list according to quantities
   const printCardsList = useMemo<{ key: string; card: CKCard; quantity: number }[]>(() => {
     const list: { key: string; card: CKCard; quantity: number }[] = [];
@@ -1775,18 +1794,84 @@ function PrintStudioModal({
     return list;
   }, [printCardsList]);
 
-  // Group into sheets of 9 cards (3x3 grid)
+  // Group into sheets based on user's cardsPerSheet selection
   const sheets = useMemo<CKCard[][]>(() => {
     const res: CKCard[][] = [];
-    for (let i = 0; i < flattenedCards.length; i += 9) {
-      res.push(flattenedCards.slice(i, i + 9));
+    for (let i = 0; i < flattenedCards.length; i += cardsPerSheet) {
+      res.push(flattenedCards.slice(i, i + cardsPerSheet));
     }
     return res;
-  }, [flattenedCards]);
+  }, [flattenedCards, cardsPerSheet]);
 
   const [previewSheetIndex, setPreviewSheetIndex] = useState(0);
   const currentSheetIndex = Math.min(previewSheetIndex, Math.max(0, sheets.length - 1));
   const currentSheetCards = sheets[currentSheetIndex] || [];
+
+  // Scale mode: "standard" (100% MTG card) vs "autofit" (maximum page fill) vs "custom"
+  const [scaleMode, setScaleMode] = useState<"standard" | "autofit" | "custom">("standard");
+  const [showFineTune, setShowFineTune] = useState(false);
+
+  // Auto-fit scale calculator
+  const calculateFitScale = useCallback((cols: number, rows: number, paper: "a4" | "letter", gap: number) => {
+    const pW = paper === "a4" ? 210 : 215.9;
+    const pH = paper === "a4" ? 297 : 279.4;
+    // 12mm safe printable margins
+    const availW = Math.max(10, pW - 24);
+    const availH = Math.max(10, pH - 24);
+    const maxCardW = (availW - Math.max(0, cols - 1) * gap) / cols;
+    const maxCardH = (availH - Math.max(0, rows - 1) * gap) / rows;
+    const scaleByW = (maxCardW / 63) * 100;
+    const scaleByH = (maxCardH / 88) * 100;
+    return Math.min(160, Math.max(50, Math.floor(Math.min(scaleByW, scaleByH))));
+  }, []);
+
+  const autoFitScale = useMemo(() => {
+    return calculateFitScale(gridCols, gridRows, paperSize, cardGapMm);
+  }, [calculateFitScale, gridCols, gridRows, paperSize, cardGapMm]);
+
+  // Mouse wheel listener on the paper preview container to smoothly flip sheets
+  const paperWrapperRef = useRef<HTMLDivElement>(null);
+  const lastWheelTimeRef = useRef<number>(0);
+
+  useEffect(() => {
+    const el = paperWrapperRef.current;
+    if (!el) return;
+
+    const handleNativeWheel = (e: WheelEvent) => {
+      if (sheets.length <= 1) return;
+      // Prevent scrolling the modal dialog while mouse wheeling over the paper
+      e.preventDefault();
+      e.stopPropagation();
+
+      const now = Date.now();
+      if (now - lastWheelTimeRef.current < 160) return;
+
+      if (e.deltaY > 8) {
+        // Scroll Down -> Next sheet
+        setPreviewSheetIndex((prev) => {
+          if (prev < sheets.length - 1) {
+            lastWheelTimeRef.current = now;
+            return prev + 1;
+          }
+          return prev;
+        });
+      } else if (e.deltaY < -8) {
+        // Scroll Up -> Previous sheet
+        setPreviewSheetIndex((prev) => {
+          if (prev > 0) {
+            lastWheelTimeRef.current = now;
+            return prev - 1;
+          }
+          return prev;
+        });
+      }
+    };
+
+    el.addEventListener("wheel", handleNativeWheel, { passive: false });
+    return () => {
+      el.removeEventListener("wheel", handleNativeWheel);
+    };
+  }, [sheets.length]);
 
   // Keyboard navigation & Esc to close
   useEffect(() => {
@@ -1812,8 +1897,8 @@ function PrintStudioModal({
   // Paper Dimensions & Margins
   const paperWidthMm = paperSize === "a4" ? 210 : 215.9;
   const paperHeightMm = paperSize === "a4" ? 297 : 279.4;
-  const gridWidthMm = 3 * cardWidthMm + 2 * cardGapMm;
-  const gridHeightMm = 3 * cardHeightMm + 2 * cardGapMm;
+  const gridWidthMm = gridCols * cardWidthMm + Math.max(0, gridCols - 1) * cardGapMm;
+  const gridHeightMm = gridRows * cardHeightMm + Math.max(0, gridRows - 1) * cardGapMm;
   const hMarginMm = Math.max(0, (paperWidthMm - gridWidthMm) / 2);
   const vMarginMm = Math.max(0, (paperHeightMm - gridHeightMm) / 2);
 
@@ -1847,7 +1932,7 @@ function PrintStudioModal({
                 </span>
               </div>
               <p className="text-[11px] text-slate-400 hidden sm:block">
-                Exact 1:1 physical millimeter scaling • 9 cards fill 1 sheet at 100%
+                Exact 1:1 physical millimeter scaling • {gridCols}×{gridRows} ({cardsPerSheet} cards/sheet)
               </p>
             </div>
           </div>
@@ -1875,21 +1960,98 @@ function PrintStudioModal({
         <div className="flex-1 overflow-y-auto flex flex-col lg:flex-row divide-y lg:divide-y-0 lg:divide-x divide-white/[0.06]">
           {/* LEFT SIDE: CONTROLS & SELECTED CARDS QUEUE */}
           <div className="w-full lg:w-[420px] shrink-0 p-4 sm:p-5 space-y-5 overflow-y-auto bg-[#0d0f17]">
-            {/* 1. Scale & Dimensions Controller */}
-            <div className="bg-[#131622] border border-white/[0.06] rounded-2xl p-4 space-y-3 shadow-sm">
+            {/* 1. Cards Per Sheet & Auto-Scale Controller */}
+            <div className="bg-[#131622] border border-white/[0.06] rounded-2xl p-4 space-y-3.5 shadow-sm">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-1.5">
-                  <Settings2 className="w-3.5 h-3.5 text-amber-400" />
+                  <Layers className="w-3.5 h-3.5 text-amber-400" />
                   <label className="text-xs font-bold text-white tracking-wide uppercase">
-                    Card Scale & Sizing
+                    Cards per Sheet (จำนวนการ์ดต่อแผ่น)
                   </label>
                 </div>
                 <div className="flex items-baseline gap-1">
                   <span className="text-base font-black font-mono text-amber-400 tabular-nums">
-                    {printScale}%
+                    {cardsPerSheet}
                   </span>
-                  <span className="text-[10px] text-slate-400">scale</span>
+                  <span className="text-[10px] text-slate-400 font-mono">
+                    ({gridCols}×{gridRows})
+                  </span>
                 </div>
+              </div>
+
+              {/* Cards Per Sheet Selection Buttons */}
+              <div className="grid grid-cols-5 gap-1.5">
+                {[
+                  { count: 9, cols: 3, rows: 3, label: "9 Cards", sub: "3×3 Grid" },
+                  { count: 6, cols: 2, rows: 3, label: "6 Cards", sub: "2×3 Grid" },
+                  { count: 4, cols: 2, rows: 2, label: "4 Cards", sub: "2×2 Grid" },
+                  { count: 2, cols: 1, rows: 2, label: "2 Cards", sub: "1×2 Grid" },
+                  { count: 1, cols: 1, rows: 1, label: "1 Card", sub: "Single" },
+                ].map((preset) => {
+                  const isActive = gridCols === preset.cols && gridRows === preset.rows;
+                  return (
+                    <button
+                      key={preset.count}
+                      type="button"
+                      onClick={() => {
+                        setGridCols(preset.cols);
+                        setGridRows(preset.rows);
+                        if (scaleMode === "autofit") {
+                          const fit = calculateFitScale(preset.cols, preset.rows, paperSize, cardGapMm);
+                          setPrintScale(fit);
+                        } else if (scaleMode === "standard") {
+                          setPrintScale(100);
+                        }
+                      }}
+                      className={`py-2 px-1 rounded-xl text-center transition cursor-pointer border ${
+                        isActive
+                          ? "bg-amber-400/20 border-amber-400/70 text-amber-300 font-bold shadow-md ring-1 ring-amber-400/30"
+                          : "bg-[#090b12] border-white/[0.06] text-slate-400 hover:text-white hover:bg-white/[0.04]"
+                      }`}
+                      title={`${preset.label} (${preset.sub})`}
+                    >
+                      <div className="text-xs font-mono font-bold">{preset.label}</div>
+                      <div className="text-[9px] opacity-75 mt-0.5">{preset.sub}</div>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Sizing Mode: Standard 100% vs Auto-Fit Page */}
+              <div className="grid grid-cols-2 gap-2 pt-0.5">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setScaleMode("standard");
+                    setPrintScale(100);
+                  }}
+                  className={`py-1.5 px-2.5 rounded-lg border text-center transition cursor-pointer ${
+                    scaleMode === "standard"
+                      ? "bg-amber-400/15 border-amber-400/50 text-amber-300 font-semibold"
+                      : "bg-[#090b12] border-white/[0.06] text-slate-400 hover:text-white"
+                  }`}
+                >
+                  <div className="text-xs font-medium">Standard MTG (100%)</div>
+                  <div className="text-[10px] text-slate-500 font-mono">63 × 88 mm (Sleeve Size)</div>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setScaleMode("autofit");
+                    const fit = calculateFitScale(gridCols, gridRows, paperSize, cardGapMm);
+                    setPrintScale(fit);
+                  }}
+                  className={`py-1.5 px-2.5 rounded-lg border text-center transition cursor-pointer ${
+                    scaleMode === "autofit"
+                      ? "bg-amber-400/15 border-amber-400/50 text-amber-300 font-semibold"
+                      : "bg-[#090b12] border-white/[0.06] text-slate-400 hover:text-white"
+                  }`}
+                >
+                  <div className="text-xs font-medium">Fit to Page (Auto)</div>
+                  <div className="text-[10px] text-slate-500 font-mono">
+                    Auto-scaled: {autoFitScale}%
+                  </div>
+                </button>
               </div>
 
               {/* Exact Physical Dimensions Readout */}
@@ -1901,53 +2063,48 @@ function PrintStudioModal({
                   </div>
                 </div>
                 <div>
-                  <div className="text-[10px] text-slate-500 uppercase tracking-wider">Inches</div>
-                  <div className="text-xs font-bold text-slate-200 mt-0.5">
-                    {cardWidthIn}&quot; × {cardHeightIn}&quot;
+                  <div className="text-[10px] text-slate-500 uppercase tracking-wider">Inches & Scale</div>
+                  <div className="text-xs font-bold text-amber-400 mt-0.5">
+                    {cardWidthIn}&quot; × {cardHeightIn}&quot; ({printScale}%)
                   </div>
                 </div>
               </div>
 
-              {/* Slider */}
-              <div className="space-y-1">
-                <input
-                  type="range"
-                  min={50}
-                  max={120}
-                  step={1}
-                  value={printScale}
-                  onChange={(e) => setPrintScale(Number(e.target.value))}
-                  className="w-full accent-amber-500 cursor-pointer h-1.5 bg-slate-700 rounded-lg appearance-none"
-                />
-                <div className="flex justify-between text-[10px] text-slate-500 font-mono">
-                  <span>50% (Min)</span>
-                  <span>100% (Standard)</span>
-                  <span>120% (Max)</span>
-                </div>
-              </div>
+              {/* Optional Manual Fine-tune Collapsible */}
+              <div className="pt-1 border-t border-white/[0.04]">
+                <button
+                  type="button"
+                  onClick={() => setShowFineTune((prev) => !prev)}
+                  className="text-[11px] text-slate-500 hover:text-amber-400 transition cursor-pointer flex items-center justify-between w-full"
+                >
+                  <span className="flex items-center gap-1">
+                    <Settings2 className="w-3 h-3" />
+                    <span>Fine-tune scale slider (optional)</span>
+                  </span>
+                  <span>{showFineTune ? "Hide ▲" : "Show ▼"}</span>
+                </button>
 
-              {/* Quick Presets */}
-              <div className="grid grid-cols-4 gap-1.5 pt-1">
-                {[
-                  { label: "100%", sub: "Standard", scale: 100 },
-                  { label: "95%", sub: "Sleeve-Fit", scale: 95 },
-                  { label: "90%", sub: "Compact", scale: 90 },
-                  { label: "80%", sub: "Token", scale: 80 },
-                ].map((preset) => (
-                  <button
-                    key={preset.scale}
-                    type="button"
-                    onClick={() => setPrintScale(preset.scale)}
-                    className={`py-1.5 px-1 rounded-lg text-center transition cursor-pointer border ${
-                      printScale === preset.scale
-                        ? "bg-amber-400/20 border-amber-400/60 text-amber-300 font-bold"
-                        : "bg-white/[0.03] border-white/[0.06] text-slate-400 hover:text-white hover:bg-white/[0.06]"
-                    }`}
-                  >
-                    <div className="text-xs font-mono">{preset.label}</div>
-                    <div className="text-[9px] opacity-75 truncate">{preset.sub}</div>
-                  </button>
-                ))}
+                {showFineTune && (
+                  <div className="mt-2.5 space-y-1.5 animate-in fade-in duration-150">
+                    <input
+                      type="range"
+                      min={50}
+                      max={160}
+                      step={1}
+                      value={printScale}
+                      onChange={(e) => {
+                        setScaleMode("custom");
+                        setPrintScale(Number(e.target.value));
+                      }}
+                      className="w-full accent-amber-500 cursor-pointer h-1.5 bg-slate-700 rounded-lg appearance-none"
+                    />
+                    <div className="flex justify-between text-[10px] text-slate-500 font-mono">
+                      <span>50%</span>
+                      <span>100% (Standard)</span>
+                      <span>160%</span>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -1967,7 +2124,12 @@ function PrintStudioModal({
               <div className="grid grid-cols-2 gap-2">
                 <button
                   type="button"
-                  onClick={() => setPaperSize("a4")}
+                  onClick={() => {
+                    setPaperSize("a4");
+                    if (scaleMode === "autofit") {
+                      setPrintScale(calculateFitScale(gridCols, gridRows, "a4", cardGapMm));
+                    }
+                  }}
                   className={`py-2 px-3 rounded-xl border text-left transition cursor-pointer ${
                     paperSize === "a4"
                       ? "bg-amber-400/15 border-amber-400/50 text-amber-300 font-semibold"
@@ -1979,7 +2141,12 @@ function PrintStudioModal({
                 </button>
                 <button
                   type="button"
-                  onClick={() => setPaperSize("letter")}
+                  onClick={() => {
+                    setPaperSize("letter");
+                    if (scaleMode === "autofit") {
+                      setPrintScale(calculateFitScale(gridCols, gridRows, "letter", cardGapMm));
+                    }
+                  }}
                   className={`py-2 px-3 rounded-xl border text-left transition cursor-pointer ${
                     paperSize === "letter"
                       ? "bg-amber-400/15 border-amber-400/50 text-amber-300 font-semibold"
@@ -2007,7 +2174,12 @@ function PrintStudioModal({
                     <button
                       key={g.gap}
                       type="button"
-                      onClick={() => setCardGapMm(g.gap)}
+                      onClick={() => {
+                        setCardGapMm(g.gap);
+                        if (scaleMode === "autofit") {
+                          setPrintScale(calculateFitScale(gridCols, gridRows, paperSize, g.gap));
+                        }
+                      }}
                       className={`py-1 px-1 rounded-lg text-center transition cursor-pointer border ${
                         cardGapMm === g.gap
                           ? "bg-amber-400/20 border-amber-400/60 text-amber-300 font-bold"
@@ -2054,7 +2226,7 @@ function PrintStudioModal({
             <div className="bg-[#131622] border border-white/[0.06] rounded-2xl p-4 space-y-3 shadow-sm">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-1.5">
-                  <Layers className="w-3.5 h-3.5 text-amber-400" />
+                  <Boxes className="w-3.5 h-3.5 text-amber-400" />
                   <span className="text-xs font-bold text-white uppercase tracking-wide">
                     Print Queue ({printCardsList.length} Unique)
                   </span>
@@ -2158,7 +2330,7 @@ function PrintStudioModal({
           {/* RIGHT SIDE: INTERACTIVE REAL-TIME SHEET PREVIEW */}
           <div className="flex-1 bg-[#07080d] p-4 sm:p-6 flex flex-col items-center justify-between min-h-[500px]">
             {/* Sheet Navigator Header */}
-            <div className="w-full flex items-center justify-between pb-4 max-w-[500px]">
+            <div className="w-full flex items-center justify-between pb-3 max-w-[500px]">
               <div className="text-xs text-slate-300 font-medium">
                 Sheet Preview: <strong className="text-white">{paperSize.toUpperCase()}</strong> ({sheets.length > 0 ? currentSheetIndex + 1 : 0} of {sheets.length || 1})
               </div>
@@ -2170,6 +2342,7 @@ function PrintStudioModal({
                     onClick={() => setPreviewSheetIndex((p) => Math.max(0, p - 1))}
                     disabled={currentSheetIndex === 0}
                     className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white/[0.06] hover:bg-white/[0.1] text-xs text-slate-200 disabled:opacity-30 disabled:pointer-events-none transition cursor-pointer"
+                    title="Previous sheet (Left Arrow ← or Wheel Up)"
                   >
                     <ChevronLeft className="w-3.5 h-3.5" />
                     <span>Prev</span>
@@ -2182,6 +2355,7 @@ function PrintStudioModal({
                     onClick={() => setPreviewSheetIndex((p) => Math.min(sheets.length - 1, p + 1))}
                     disabled={currentSheetIndex >= sheets.length - 1}
                     className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white/[0.06] hover:bg-white/[0.1] text-xs text-slate-200 disabled:opacity-30 disabled:pointer-events-none transition cursor-pointer"
+                    title="Next sheet (Right Arrow → or Wheel Down)"
                   >
                     <span>Next</span>
                     <ChevronRight className="w-3.5 h-3.5" />
@@ -2190,10 +2364,23 @@ function PrintStudioModal({
               )}
             </div>
 
-            {/* REALISTIC PHYSICAL PAPER SHEET MOCKUP */}
-            <div className="w-full flex-1 flex items-center justify-center py-2">
+            {/* REALISTIC PHYSICAL PAPER SHEET MOCKUP (WITH MOUSE WHEEL PAGE FLIP) */}
+            <div
+              ref={paperWrapperRef}
+              className="w-full flex-1 flex flex-col items-center justify-center py-2 relative group"
+              title={sheets.length > 1 ? "Scroll mouse wheel to change sheets" : undefined}
+            >
+              {/* Floating mouse wheel badge */}
+              {sheets.length > 1 && (
+                <div className="mb-2 px-3 py-0.5 rounded-full bg-amber-400/15 border border-amber-400/30 text-[11px] text-amber-300 font-medium flex items-center gap-1.5 shadow-sm">
+                  <span>🖱️ Scroll mouse wheel over paper to change pages ({currentSheetIndex + 1}/{sheets.length})</span>
+                </div>
+              )}
+
               <div
-                className="relative bg-white text-slate-900 rounded-sm shadow-2xl shadow-black/80 flex items-center justify-center p-3 select-none transition-all duration-200"
+                className={`relative bg-white text-slate-900 rounded-sm shadow-2xl shadow-black/80 flex items-center justify-center p-3 select-none transition-all duration-200 ${
+                  sheets.length > 1 ? "cursor-ns-resize hover:ring-2 hover:ring-amber-400/40" : ""
+                }`}
                 style={{
                   width: "100%",
                   maxWidth: paperSize === "a4" ? "420px" : "440px",
@@ -2204,16 +2391,18 @@ function PrintStudioModal({
                 {/* Visual Paper Edge Marks */}
                 <div className="absolute inset-0 pointer-events-none border border-slate-200/60" />
 
-                {/* 3x3 Card Grid - Proportional to real paper size! */}
+                {/* Dynamic Card Grid (Cols x Rows) */}
                 <div
-                  className="grid grid-cols-3 grid-rows-3 transition-all duration-150 ease-out"
+                  className="grid transition-all duration-200 ease-out"
                   style={{
-                    width: `${Math.min(96, (gridWidthMm / paperWidthMm) * 100)}%`,
-                    height: `${Math.min(96, (gridHeightMm / paperHeightMm) * 100)}%`,
+                    gridTemplateColumns: `repeat(${gridCols}, minmax(0, 1fr))`,
+                    gridTemplateRows: `repeat(${gridRows}, minmax(0, 1fr))`,
+                    width: `${Math.min(94, (gridWidthMm / paperWidthMm) * 100)}%`,
+                    height: `${Math.min(94, (gridHeightMm / paperHeightMm) * 100)}%`,
                     gap: `${Math.max(1, cardGapMm * 1.5)}px`,
                   }}
                 >
-                  {Array.from({ length: 9 }).map((_, slotIdx) => {
+                  {Array.from({ length: cardsPerSheet }).map((_, slotIdx) => {
                     const card = currentSheetCards[slotIdx];
                     return (
                       <div
@@ -2246,7 +2435,7 @@ function PrintStudioModal({
 
                 {/* Subtle paper watermark in bottom corner */}
                 <div className="absolute bottom-1 right-2 text-[8px] font-mono text-slate-400 select-none">
-                  LungJi • {paperSize.toUpperCase()} • Scale {printScale}%
+                  LungJi • {paperSize.toUpperCase()} • {gridCols}×{gridRows} ({cardsPerSheet}/sheet) • Scale {printScale}%
                 </div>
               </div>
             </div>
@@ -2254,7 +2443,7 @@ function PrintStudioModal({
             {/* Bottom Info Bar in Preview Area */}
             <div className="w-full max-w-[500px] flex items-center justify-between text-xs text-slate-400 pt-3 border-t border-white/[0.06]">
               <span className="font-mono">
-                9 Cards / Sheet (3×3 Grid)
+                {cardsPerSheet} Cards / Sheet ({gridCols}×{gridRows})
               </span>
               <button
                 type="button"
@@ -2282,6 +2471,8 @@ interface PrintCanvasProps {
   paperSize: "a4" | "letter";
   cardGapMm: number;
   cuttingGuide: "hairline" | "dashed" | "none";
+  gridCols: number;
+  gridRows: number;
 }
 
 function PrintCanvas({
@@ -2290,7 +2481,11 @@ function PrintCanvas({
   paperSize,
   cardGapMm,
   cuttingGuide,
+  gridCols,
+  gridRows,
 }: PrintCanvasProps) {
+  const cardsPerSheet = gridCols * gridRows;
+
   const flattenedCards = useMemo<CKCard[]>(() => {
     const list: CKCard[] = [];
     Object.values(selectedCards).forEach(({ card, quantity }: { card: CKCard; quantity: number }) => {
@@ -2303,11 +2498,11 @@ function PrintCanvas({
 
   const sheets = useMemo<CKCard[][]>(() => {
     const res: CKCard[][] = [];
-    for (let i = 0; i < flattenedCards.length; i += 9) {
-      res.push(flattenedCards.slice(i, i + 9));
+    for (let i = 0; i < flattenedCards.length; i += cardsPerSheet) {
+      res.push(flattenedCards.slice(i, i + cardsPerSheet));
     }
     return res;
-  }, [flattenedCards]);
+  }, [flattenedCards, cardsPerSheet]);
 
   if (sheets.length === 0) return null;
 
@@ -2345,8 +2540,8 @@ function PrintCanvas({
           <div
             style={{
               display: "grid",
-              gridTemplateColumns: `repeat(3, ${cardWidthMm}mm)`,
-              gridTemplateRows: `repeat(3, ${cardHeightMm}mm)`,
+              gridTemplateColumns: `repeat(${gridCols}, ${cardWidthMm}mm)`,
+              gridTemplateRows: `repeat(${gridRows}, ${cardHeightMm}mm)`,
               gap: `${cardGapMm}mm`,
               justifyContent: "center",
               alignContent: "center",
