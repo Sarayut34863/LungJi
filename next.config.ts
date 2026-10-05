@@ -1,7 +1,10 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  serverExternalPackages: ["node:sqlite"],
+  outputFileTracingIncludes: {
+    "/api/**/*": ["./src/data/cards.db"],
+  },
 };
 
 export default nextConfig;

@@ -1,0 +1,6 @@
+# Vercel Deployment Ignore
+src/data/ck-pricelist.json
+src/data/rarity-map.json
+src/data/*.db-shm
+src/data/*.db-wal
+scripts/
