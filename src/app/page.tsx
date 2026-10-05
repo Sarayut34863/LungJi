@@ -434,6 +434,8 @@ export default function HomePage() {
   const [cuttingGuide, setCuttingGuide] = useState<"hairline" | "dashed" | "none">("hairline");
   const [gridCols, setGridCols] = useState<number>(3);
   const [gridRows, setGridRows] = useState<number>(3);
+  const [showPriceOnPrint, setShowPriceOnPrint] = useState<boolean>(true);
+  const [priceTagFormat, setPriceTagFormat] = useState<"price_only" | "name_price">("price_only");
 
   const totalPrintCardCount = Object.values(selectedCards).reduce((acc, c) => acc + c.quantity, 0);
 
@@ -1390,6 +1392,10 @@ export default function HomePage() {
           setGridCols={setGridCols}
           gridRows={gridRows}
           setGridRows={setGridRows}
+          showPriceOnPrint={showPriceOnPrint}
+          setShowPriceOnPrint={setShowPriceOnPrint}
+          priceTagFormat={priceTagFormat}
+          setPriceTagFormat={setPriceTagFormat}
         />
       )}
 
@@ -1403,6 +1409,8 @@ export default function HomePage() {
           cuttingGuide={cuttingGuide}
           gridCols={gridCols}
           gridRows={gridRows}
+          showPriceOnPrint={showPriceOnPrint}
+          priceTagFormat={priceTagFormat}
         />
       )}
     </div>
@@ -1749,6 +1757,10 @@ interface PrintStudioModalProps {
   setGridCols: (cols: number) => void;
   gridRows: number;
   setGridRows: (rows: number) => void;
+  showPriceOnPrint: boolean;
+  setShowPriceOnPrint: (show: boolean) => void;
+  priceTagFormat: "price_only" | "name_price";
+  setPriceTagFormat: (fmt: "price_only" | "name_price") => void;
 }
 
 function PrintStudioModal({
@@ -1769,6 +1781,10 @@ function PrintStudioModal({
   setGridCols,
   gridRows,
   setGridRows,
+  showPriceOnPrint,
+  setShowPriceOnPrint,
+  priceTagFormat,
+  setPriceTagFormat,
 }: PrintStudioModalProps) {
   // Number of cards per sheet based on grid layout
   const cardsPerSheet = gridCols * gridRows;
@@ -1807,27 +1823,44 @@ function PrintStudioModal({
   const currentSheetIndex = Math.min(previewSheetIndex, Math.max(0, sheets.length - 1));
   const currentSheetCards = sheets[currentSheetIndex] || [];
 
-  // Scale mode: "standard" (100% MTG card) vs "autofit" (maximum page fill) vs "custom"
-  const [scaleMode, setScaleMode] = useState<"standard" | "autofit" | "custom">("standard");
+  // Scale mode: "autofit" (maximum page fill) vs "standard" (100% MTG card) vs "custom"
+  const [scaleMode, setScaleMode] = useState<"autofit" | "standard" | "custom">("autofit");
   const [showFineTune, setShowFineTune] = useState(false);
+  const [activeTab, setActiveTab] = useState<"density" | "standard" | "custom">("density");
 
-  // Auto-fit scale calculator
-  const calculateFitScale = useCallback((cols: number, rows: number, paper: "a4" | "letter", gap: number) => {
+  // Auto-fit scale calculator - 6mm printer margin for packing as many cards as possible!
+  const calculateFitScale = useCallback((cols: number, rows: number, paper: "a4" | "letter", gap: number, withPrice: boolean) => {
     const pW = paper === "a4" ? 210 : 215.9;
     const pH = paper === "a4" ? 297 : 279.4;
-    // 12mm safe printable margins
-    const availW = Math.max(10, pW - 24);
-    const availH = Math.max(10, pH - 24);
+    // 6mm safe desktop printer margins (total 12mm)
+    const availW = Math.max(10, pW - 12);
+    const availH = Math.max(10, pH - 12);
+    const priceH = withPrice ? 3.8 : 0;
+
     const maxCardW = (availW - Math.max(0, cols - 1) * gap) / cols;
-    const maxCardH = (availH - Math.max(0, rows - 1) * gap) / rows;
+    const maxCardH = (availH - Math.max(0, rows - 1) * gap) / rows - priceH;
+
     const scaleByW = (maxCardW / 63) * 100;
     const scaleByH = (maxCardH / 88) * 100;
-    return Math.min(160, Math.max(50, Math.floor(Math.min(scaleByW, scaleByH))));
+    return Math.min(160, Math.max(25, Math.floor(Math.min(scaleByW, scaleByH))));
   }, []);
 
   const autoFitScale = useMemo(() => {
-    return calculateFitScale(gridCols, gridRows, paperSize, cardGapMm);
-  }, [calculateFitScale, gridCols, gridRows, paperSize, cardGapMm]);
+    return calculateFitScale(gridCols, gridRows, paperSize, cardGapMm, showPriceOnPrint);
+  }, [calculateFitScale, gridCols, gridRows, paperSize, cardGapMm, showPriceOnPrint]);
+
+  // Apply auto-scale when layout changes if in autofit mode
+  const applyGridLayout = (cols: number, rows: number) => {
+    setGridCols(cols);
+    setGridRows(rows);
+    if (scaleMode === "autofit" || (cols * rows > 9)) {
+      setScaleMode("autofit");
+      const fit = calculateFitScale(cols, rows, paperSize, cardGapMm, showPriceOnPrint);
+      setPrintScale(fit);
+    } else if (scaleMode === "standard") {
+      setPrintScale(100);
+    }
+  };
 
   // Mouse wheel listener on the paper preview container to smoothly flip sheets
   const paperWrapperRef = useRef<HTMLDivElement>(null);
@@ -1839,7 +1872,6 @@ function PrintStudioModal({
 
     const handleNativeWheel = (e: WheelEvent) => {
       if (sheets.length <= 1) return;
-      // Prevent scrolling the modal dialog while mouse wheeling over the paper
       e.preventDefault();
       e.stopPropagation();
 
@@ -1847,7 +1879,6 @@ function PrintStudioModal({
       if (now - lastWheelTimeRef.current < 160) return;
 
       if (e.deltaY > 8) {
-        // Scroll Down -> Next sheet
         setPreviewSheetIndex((prev) => {
           if (prev < sheets.length - 1) {
             lastWheelTimeRef.current = now;
@@ -1856,7 +1887,6 @@ function PrintStudioModal({
           return prev;
         });
       } else if (e.deltaY < -8) {
-        // Scroll Up -> Previous sheet
         setPreviewSheetIndex((prev) => {
           if (prev > 0) {
             lastWheelTimeRef.current = now;
@@ -1893,12 +1923,13 @@ function PrintStudioModal({
   const cardHeightMm = (88 * printScale) / 100;
   const cardWidthIn = (cardWidthMm / 25.4).toFixed(2);
   const cardHeightIn = (cardHeightMm / 25.4).toFixed(2);
+  const priceTagMm = showPriceOnPrint ? 3.8 : 0;
 
   // Paper Dimensions & Margins
   const paperWidthMm = paperSize === "a4" ? 210 : 215.9;
   const paperHeightMm = paperSize === "a4" ? 297 : 279.4;
   const gridWidthMm = gridCols * cardWidthMm + Math.max(0, gridCols - 1) * cardGapMm;
-  const gridHeightMm = gridRows * cardHeightMm + Math.max(0, gridRows - 1) * cardGapMm;
+  const gridHeightMm = gridRows * (cardHeightMm + priceTagMm) + Math.max(0, gridRows - 1) * cardGapMm;
   const hMarginMm = Math.max(0, (paperWidthMm - gridWidthMm) / 2);
   const vMarginMm = Math.max(0, (paperHeightMm - gridHeightMm) / 2);
 
@@ -1932,7 +1963,7 @@ function PrintStudioModal({
                 </span>
               </div>
               <p className="text-[11px] text-slate-400 hidden sm:block">
-                Exact 1:1 physical millimeter scaling • {gridCols}×{gridRows} ({cardsPerSheet} cards/sheet)
+                Exact physical millimeter scaling • {gridCols}×{gridRows} ({cardsPerSheet} cards/sheet) {showPriceOnPrint ? "• With Prices" : ""}
               </p>
             </div>
           </div>
@@ -1959,7 +1990,7 @@ function PrintStudioModal({
         {/* Modal Body */}
         <div className="flex-1 overflow-y-auto flex flex-col lg:flex-row divide-y lg:divide-y-0 lg:divide-x divide-white/[0.06]">
           {/* LEFT SIDE: CONTROLS & SELECTED CARDS QUEUE */}
-          <div className="w-full lg:w-[420px] shrink-0 p-4 sm:p-5 space-y-5 overflow-y-auto bg-[#0d0f17]">
+          <div className="w-full lg:w-[430px] shrink-0 p-4 sm:p-5 space-y-4 overflow-y-auto bg-[#0d0f17]">
             {/* 1. Cards Per Sheet & Auto-Scale Controller */}
             <div className="bg-[#131622] border border-white/[0.06] rounded-2xl p-4 space-y-3.5 shadow-sm">
               <div className="flex items-center justify-between">
@@ -1979,80 +2010,199 @@ function PrintStudioModal({
                 </div>
               </div>
 
-              {/* Cards Per Sheet Selection Buttons */}
-              <div className="grid grid-cols-5 gap-1.5">
-                {[
-                  { count: 9, cols: 3, rows: 3, label: "9 Cards", sub: "3×3 Grid" },
-                  { count: 6, cols: 2, rows: 3, label: "6 Cards", sub: "2×3 Grid" },
-                  { count: 4, cols: 2, rows: 2, label: "4 Cards", sub: "2×2 Grid" },
-                  { count: 2, cols: 1, rows: 2, label: "2 Cards", sub: "1×2 Grid" },
-                  { count: 1, cols: 1, rows: 1, label: "1 Card", sub: "Single" },
-                ].map((preset) => {
-                  const isActive = gridCols === preset.cols && gridRows === preset.rows;
-                  return (
-                    <button
-                      key={preset.count}
-                      type="button"
-                      onClick={() => {
-                        setGridCols(preset.cols);
-                        setGridRows(preset.rows);
-                        if (scaleMode === "autofit") {
-                          const fit = calculateFitScale(preset.cols, preset.rows, paperSize, cardGapMm);
-                          setPrintScale(fit);
-                        } else if (scaleMode === "standard") {
-                          setPrintScale(100);
-                        }
-                      }}
-                      className={`py-2 px-1 rounded-xl text-center transition cursor-pointer border ${
-                        isActive
-                          ? "bg-amber-400/20 border-amber-400/70 text-amber-300 font-bold shadow-md ring-1 ring-amber-400/30"
-                          : "bg-[#090b12] border-white/[0.06] text-slate-400 hover:text-white hover:bg-white/[0.04]"
-                      }`}
-                      title={`${preset.label} (${preset.sub})`}
-                    >
-                      <div className="text-xs font-mono font-bold">{preset.label}</div>
-                      <div className="text-[9px] opacity-75 mt-0.5">{preset.sub}</div>
-                    </button>
-                  );
-                })}
+              {/* Layout Category Tabs */}
+              <div className="flex items-center p-1 bg-[#090b12] rounded-xl border border-white/[0.06] gap-1 text-xs">
+                <button
+                  type="button"
+                  onClick={() => setActiveTab("density")}
+                  className={`flex-1 py-1 rounded-lg font-medium transition cursor-pointer text-center ${
+                    activeTab === "density"
+                      ? "bg-amber-500 text-slate-950 font-bold shadow-sm"
+                      : "text-slate-400 hover:text-white"
+                  }`}
+                >
+                  🚀 High Density (เยอะสุด)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab("standard")}
+                  className={`flex-1 py-1 rounded-lg font-medium transition cursor-pointer text-center ${
+                    activeTab === "standard"
+                      ? "bg-amber-500 text-slate-950 font-bold shadow-sm"
+                      : "text-slate-400 hover:text-white"
+                  }`}
+                >
+                  Standard (ปกติ)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab("custom")}
+                  className={`flex-1 py-1 rounded-lg font-medium transition cursor-pointer text-center ${
+                    activeTab === "custom"
+                      ? "bg-amber-500 text-slate-950 font-bold shadow-sm"
+                      : "text-slate-400 hover:text-white"
+                  }`}
+                >
+                  Custom (กำหนดเอง)
+                </button>
               </div>
 
-              {/* Sizing Mode: Standard 100% vs Auto-Fit Page */}
-              <div className="grid grid-cols-2 gap-2 pt-0.5">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setScaleMode("standard");
-                    setPrintScale(100);
-                  }}
-                  className={`py-1.5 px-2.5 rounded-lg border text-center transition cursor-pointer ${
-                    scaleMode === "standard"
-                      ? "bg-amber-400/15 border-amber-400/50 text-amber-300 font-semibold"
-                      : "bg-[#090b12] border-white/[0.06] text-slate-400 hover:text-white"
-                  }`}
-                >
-                  <div className="text-xs font-medium">Standard MTG (100%)</div>
-                  <div className="text-[10px] text-slate-500 font-mono">63 × 88 mm (Sleeve Size)</div>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setScaleMode("autofit");
-                    const fit = calculateFitScale(gridCols, gridRows, paperSize, cardGapMm);
-                    setPrintScale(fit);
-                  }}
-                  className={`py-1.5 px-2.5 rounded-lg border text-center transition cursor-pointer ${
-                    scaleMode === "autofit"
-                      ? "bg-amber-400/15 border-amber-400/50 text-amber-300 font-semibold"
-                      : "bg-[#090b12] border-white/[0.06] text-slate-400 hover:text-white"
-                  }`}
-                >
-                  <div className="text-xs font-medium">Fit to Page (Auto)</div>
-                  <div className="text-[10px] text-slate-500 font-mono">
-                    Auto-scaled: {autoFitScale}%
+              {/* TAB A: High Density Presets (42, 30, 25, 20, 16 cards) */}
+              {activeTab === "density" && (
+                <div className="space-y-1.5 animate-in fade-in duration-150">
+                  <div className="grid grid-cols-3 gap-1.5">
+                    {[
+                      { count: 30, cols: 5, rows: 6, label: "30 Cards", sub: "5×6 Pocket (~53%)" },
+                      { count: 25, cols: 5, rows: 5, label: "25 Cards", sub: "5×5 Catalog (~58%)" },
+                      { count: 20, cols: 4, rows: 5, label: "20 Cards", sub: "4×5 Compact (~64%)" },
+                      { count: 16, cols: 4, rows: 4, label: "16 Cards", sub: "4×4 Mini (~74%)" },
+                      { count: 42, cols: 6, rows: 7, label: "42 Cards", sub: "6×7 Ultra (~43%)" },
+                      { count: 56, cols: 7, rows: 8, label: "56 Cards", sub: "7×8 Mega (~37%)" },
+                    ].map((preset) => {
+                      const isActive = gridCols === preset.cols && gridRows === preset.rows;
+                      return (
+                        <button
+                          key={preset.count}
+                          type="button"
+                          onClick={() => applyGridLayout(preset.cols, preset.rows)}
+                          className={`py-2 px-1 rounded-xl text-center transition cursor-pointer border ${
+                            isActive
+                              ? "bg-amber-400/20 border-amber-400/80 text-amber-300 font-bold shadow-md ring-1 ring-amber-400/40"
+                              : "bg-[#090b12] border-white/[0.06] text-slate-400 hover:text-white hover:bg-white/[0.04]"
+                          }`}
+                        >
+                          <div className="text-xs font-mono font-bold">{preset.label}</div>
+                          <div className="text-[9px] opacity-75 mt-0.5 truncate">{preset.sub}</div>
+                        </button>
+                      );
+                    })}
                   </div>
-                </button>
-              </div>
+                </div>
+              )}
+
+              {/* TAB B: Standard MTG Presets (9, 6, 4, 2, 1 cards) */}
+              {activeTab === "standard" && (
+                <div className="space-y-1.5 animate-in fade-in duration-150">
+                  <div className="grid grid-cols-4 gap-1.5">
+                    {[
+                      { count: 9, cols: 3, rows: 3, label: "9 Cards", sub: "3×3 (100%)" },
+                      { count: 6, cols: 2, rows: 3, label: "6 Cards", sub: "2×3 Spacious" },
+                      { count: 4, cols: 2, rows: 2, label: "4 Cards", sub: "2×2 Large" },
+                      { count: 1, cols: 1, rows: 1, label: "1 Card", sub: "Showcase" },
+                    ].map((preset) => {
+                      const isActive = gridCols === preset.cols && gridRows === preset.rows;
+                      return (
+                        <button
+                          key={preset.count}
+                          type="button"
+                          onClick={() => applyGridLayout(preset.cols, preset.rows)}
+                          className={`py-2 px-1 rounded-xl text-center transition cursor-pointer border ${
+                            isActive
+                              ? "bg-amber-400/20 border-amber-400/80 text-amber-300 font-bold shadow-md ring-1 ring-amber-400/40"
+                              : "bg-[#090b12] border-white/[0.06] text-slate-400 hover:text-white hover:bg-white/[0.04]"
+                          }`}
+                        >
+                          <div className="text-xs font-mono font-bold">{preset.label}</div>
+                          <div className="text-[9px] opacity-75 mt-0.5">{preset.sub}</div>
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {/* MTG Standard 100% vs Auto-Fit Page Toggle */}
+                  <div className="grid grid-cols-2 gap-2 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setScaleMode("standard");
+                        setPrintScale(100);
+                      }}
+                      className={`py-1.5 px-2 rounded-lg border text-center transition cursor-pointer ${
+                        scaleMode === "standard"
+                          ? "bg-amber-400/15 border-amber-400/50 text-amber-300 font-semibold"
+                          : "bg-[#090b12] border-white/[0.06] text-slate-400 hover:text-white"
+                      }`}
+                    >
+                      <div className="text-xs font-medium">Standard MTG (100%)</div>
+                      <div className="text-[10px] text-slate-500 font-mono">63 × 88 mm (Sleeve Size)</div>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setScaleMode("autofit");
+                        const fit = calculateFitScale(gridCols, gridRows, paperSize, cardGapMm, showPriceOnPrint);
+                        setPrintScale(fit);
+                      }}
+                      className={`py-1.5 px-2 rounded-lg border text-center transition cursor-pointer ${
+                        scaleMode === "autofit"
+                          ? "bg-amber-400/15 border-amber-400/50 text-amber-300 font-semibold"
+                          : "bg-[#090b12] border-white/[0.06] text-slate-400 hover:text-white"
+                      }`}
+                    >
+                      <div className="text-xs font-medium">Fit to Page (Auto)</div>
+                      <div className="text-[10px] text-slate-500 font-mono">
+                        Auto-scale: {autoFitScale}%
+                      </div>
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* TAB C: Custom Grid Steppers */}
+              {activeTab === "custom" && (
+                <div className="p-3 rounded-xl bg-[#090b12] border border-white/[0.06] space-y-3 animate-in fade-in duration-150">
+                  <div className="grid grid-cols-2 gap-3 text-xs">
+                    <div>
+                      <span className="text-slate-400 block mb-1">Columns (คอลัมน์)</span>
+                      <div className="flex items-center gap-1.5 bg-[#131622] border border-white/10 rounded-lg p-1">
+                        <button
+                          type="button"
+                          onClick={() => applyGridLayout(Math.max(1, gridCols - 1), gridRows)}
+                          className="w-7 h-7 rounded bg-white/[0.06] hover:bg-white/[0.12] text-white flex items-center justify-center font-bold"
+                        >
+                          <Minus className="w-3.5 h-3.5" />
+                        </button>
+                        <span className="flex-1 text-center font-mono font-bold text-amber-300">
+                          {gridCols}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => applyGridLayout(Math.min(8, gridCols + 1), gridRows)}
+                          className="w-7 h-7 rounded bg-white/[0.06] hover:bg-white/[0.12] text-white flex items-center justify-center font-bold"
+                        >
+                          <Plus className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+
+                    <div>
+                      <span className="text-slate-400 block mb-1">Rows (แถว)</span>
+                      <div className="flex items-center gap-1.5 bg-[#131622] border border-white/10 rounded-lg p-1">
+                        <button
+                          type="button"
+                          onClick={() => applyGridLayout(gridCols, Math.max(1, gridRows - 1))}
+                          className="w-7 h-7 rounded bg-white/[0.06] hover:bg-white/[0.12] text-white flex items-center justify-center font-bold"
+                        >
+                          <Minus className="w-3.5 h-3.5" />
+                        </button>
+                        <span className="flex-1 text-center font-mono font-bold text-amber-300">
+                          {gridRows}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => applyGridLayout(gridCols, Math.min(10, gridRows + 1))}
+                          className="w-7 h-7 rounded bg-white/[0.06] hover:bg-white/[0.12] text-white flex items-center justify-center font-bold"
+                        >
+                          <Plus className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="text-[11px] text-amber-300/80 font-mono text-center">
+                    Total: {cardsPerSheet} cards/sheet • Auto-scale: {autoFitScale}%
+                  </div>
+                </div>
+              )}
 
               {/* Exact Physical Dimensions Readout */}
               <div className="grid grid-cols-2 gap-2 p-2.5 rounded-xl bg-[#090b12] border border-white/[0.04] text-center font-mono">
@@ -2088,7 +2238,7 @@ function PrintStudioModal({
                   <div className="mt-2.5 space-y-1.5 animate-in fade-in duration-150">
                     <input
                       type="range"
-                      min={50}
+                      min={25}
                       max={160}
                       step={1}
                       value={printScale}
@@ -2099,7 +2249,7 @@ function PrintStudioModal({
                       className="w-full accent-amber-500 cursor-pointer h-1.5 bg-slate-700 rounded-lg appearance-none"
                     />
                     <div className="flex justify-between text-[10px] text-slate-500 font-mono">
-                      <span>50%</span>
+                      <span>25%</span>
                       <span>100% (Standard)</span>
                       <span>160%</span>
                     </div>
@@ -2108,7 +2258,74 @@ function PrintStudioModal({
               </div>
             </div>
 
-            {/* 2. Paper Size & Spacing Options */}
+            {/* 2. PRICE UNDER CARD TOGGLE (Requested by user!) */}
+            <div className="bg-[#131622] border border-amber-400/25 rounded-2xl p-3.5 space-y-2.5 shadow-sm">
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <div className="flex items-center gap-1.5 text-xs font-bold text-white">
+                    <span>Show Price under Card</span>
+                    <span className="px-1.5 py-0.2 rounded bg-amber-400/20 text-amber-300 text-[10px] font-mono font-semibold">
+                      ใส่ราคาใต้การ์ด
+                    </span>
+                  </div>
+                  <div className="text-[10px] text-slate-400">
+                    Displays Card Kingdom NM price below each printed card
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    const next = !showPriceOnPrint;
+                    setShowPriceOnPrint(next);
+                    if (scaleMode === "autofit") {
+                      const fit = calculateFitScale(gridCols, gridRows, paperSize, cardGapMm, next);
+                      setPrintScale(fit);
+                    }
+                  }}
+                  className={`w-11 h-6 rounded-full transition-colors relative cursor-pointer ${
+                    showPriceOnPrint ? "bg-amber-500" : "bg-slate-700"
+                  }`}
+                  title="Toggle Price Tag below cards"
+                >
+                  <div
+                    className={`w-4 h-4 rounded-full bg-white transition-transform absolute top-1 ${
+                      showPriceOnPrint ? "left-6" : "left-1"
+                    }`}
+                  />
+                </button>
+              </div>
+
+              {/* Price Tag Format Options */}
+              {showPriceOnPrint && (
+                <div className="grid grid-cols-2 gap-1.5 pt-1 border-t border-white/[0.06] text-xs">
+                  <button
+                    type="button"
+                    onClick={() => setPriceTagFormat("price_only")}
+                    className={`py-1 px-2 rounded-lg border text-center transition cursor-pointer ${
+                      priceTagFormat === "price_only"
+                        ? "bg-amber-400/15 border-amber-400/50 text-amber-300 font-semibold"
+                        : "bg-[#090b12] border-white/[0.06] text-slate-400 hover:text-white"
+                    }`}
+                  >
+                    Price Only ($1.49)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPriceTagFormat("name_price")}
+                    className={`py-1 px-2 rounded-lg border text-center transition cursor-pointer ${
+                      priceTagFormat === "name_price"
+                        ? "bg-amber-400/15 border-amber-400/50 text-amber-300 font-semibold"
+                        : "bg-[#090b12] border-white/[0.06] text-slate-400 hover:text-white"
+                    }`}
+                  >
+                    Name + Price
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* 3. Paper Size & Spacing Options */}
             <div className="bg-[#131622] border border-white/[0.06] rounded-2xl p-4 space-y-3.5 shadow-sm">
               <div className="flex items-center justify-between">
                 <label className="text-xs font-bold text-white tracking-wide uppercase flex items-center gap-1.5">
@@ -2127,7 +2344,7 @@ function PrintStudioModal({
                   onClick={() => {
                     setPaperSize("a4");
                     if (scaleMode === "autofit") {
-                      setPrintScale(calculateFitScale(gridCols, gridRows, "a4", cardGapMm));
+                      setPrintScale(calculateFitScale(gridCols, gridRows, "a4", cardGapMm, showPriceOnPrint));
                     }
                   }}
                   className={`py-2 px-3 rounded-xl border text-left transition cursor-pointer ${
@@ -2144,7 +2361,7 @@ function PrintStudioModal({
                   onClick={() => {
                     setPaperSize("letter");
                     if (scaleMode === "autofit") {
-                      setPrintScale(calculateFitScale(gridCols, gridRows, "letter", cardGapMm));
+                      setPrintScale(calculateFitScale(gridCols, gridRows, "letter", cardGapMm, showPriceOnPrint));
                     }
                   }}
                   className={`py-2 px-3 rounded-xl border text-left transition cursor-pointer ${
@@ -2167,9 +2384,9 @@ function PrintStudioModal({
                 <div className="grid grid-cols-4 gap-1.5">
                   {[
                     { label: "0 mm", sub: "Single Cut", gap: 0 },
+                    { label: "0.5 mm", sub: "Tight", gap: 0.5 },
                     { label: "1 mm", sub: "Border", gap: 1 },
                     { label: "2 mm", sub: "Spaced", gap: 2 },
-                    { label: "3 mm", sub: "Wide", gap: 3 },
                   ].map((g) => (
                     <button
                       key={g.gap}
@@ -2177,7 +2394,7 @@ function PrintStudioModal({
                       onClick={() => {
                         setCardGapMm(g.gap);
                         if (scaleMode === "autofit") {
-                          setPrintScale(calculateFitScale(gridCols, gridRows, paperSize, g.gap));
+                          setPrintScale(calculateFitScale(gridCols, gridRows, paperSize, g.gap, showPriceOnPrint));
                         }
                       }}
                       className={`py-1 px-1 rounded-lg text-center transition cursor-pointer border ${
@@ -2191,9 +2408,6 @@ function PrintStudioModal({
                     </button>
                   ))}
                 </div>
-                <p className="text-[10px] text-slate-500 italic">
-                  * 0 mm is best for guillotine paper trimmers (1 straight cut separates 2 cards).
-                </p>
               </div>
 
               {/* Cutting Guides */}
@@ -2222,7 +2436,7 @@ function PrintStudioModal({
               </div>
             </div>
 
-            {/* 3. Card Print Queue */}
+            {/* 4. Card Print Queue */}
             <div className="bg-[#131622] border border-white/[0.06] rounded-2xl p-4 space-y-3 shadow-sm">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-1.5">
@@ -2378,7 +2592,7 @@ function PrintStudioModal({
               )}
 
               <div
-                className={`relative bg-white text-slate-900 rounded-sm shadow-2xl shadow-black/80 flex items-center justify-center p-3 select-none transition-all duration-200 ${
+                className={`relative bg-white text-slate-900 rounded-sm shadow-2xl shadow-black/80 flex items-center justify-center p-2.5 select-none transition-all duration-200 ${
                   sheets.length > 1 ? "cursor-ns-resize hover:ring-2 hover:ring-amber-400/40" : ""
                 }`}
                 style={{
@@ -2397,36 +2611,59 @@ function PrintStudioModal({
                   style={{
                     gridTemplateColumns: `repeat(${gridCols}, minmax(0, 1fr))`,
                     gridTemplateRows: `repeat(${gridRows}, minmax(0, 1fr))`,
-                    width: `${Math.min(94, (gridWidthMm / paperWidthMm) * 100)}%`,
-                    height: `${Math.min(94, (gridHeightMm / paperHeightMm) * 100)}%`,
+                    width: `${Math.min(96, (gridWidthMm / paperWidthMm) * 100)}%`,
+                    height: `${Math.min(96, (gridHeightMm / paperHeightMm) * 100)}%`,
                     gap: `${Math.max(1, cardGapMm * 1.5)}px`,
                   }}
                 >
                   {Array.from({ length: cardsPerSheet }).map((_, slotIdx) => {
                     const card = currentSheetCards[slotIdx];
+                    const cardPrice = card ? parseFloat(card.condition_values?.nm_price || card.price_retail) || 0 : 0;
                     return (
                       <div
                         key={slotIdx}
-                        className={`relative w-full h-full aspect-[63/88] rounded-[2%] overflow-hidden flex items-center justify-center ${
-                          card
-                            ? cuttingGuide === "hairline"
-                              ? "ring-1 ring-black"
-                              : cuttingGuide === "dashed"
-                              ? "border border-dashed border-slate-400"
-                              : "border-none"
-                            : "border border-dashed border-slate-300 bg-slate-50/50"
-                        }`}
+                        className="flex flex-col items-center justify-start overflow-hidden w-full h-full"
                       >
-                        {card ? (
-                          <img
-                            src={getCardImageUrl(card, "normal")}
-                            alt={card.name}
-                            className="w-full h-full object-cover"
-                          />
-                        ) : (
-                          <span className="text-[9px] font-mono text-slate-400 select-none">
-                            Slot {slotIdx + 1}
-                          </span>
+                        <div
+                          className={`relative w-full aspect-[63/88] rounded-[2%] overflow-hidden flex items-center justify-center ${
+                            card
+                              ? cuttingGuide === "hairline"
+                                ? "ring-1 ring-black"
+                                : cuttingGuide === "dashed"
+                                ? "border border-dashed border-slate-400"
+                                : "border-none"
+                              : "border border-dashed border-slate-300 bg-slate-50/50"
+                          }`}
+                        >
+                          {card ? (
+                            <img
+                              src={getCardImageUrl(card, "normal")}
+                              alt={card.name}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <span className="text-[7px] font-mono text-slate-400 select-none">
+                              {slotIdx + 1}
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Price tag below card image */}
+                        {showPriceOnPrint && card && (
+                          <div
+                            className="w-full text-center font-mono font-bold text-slate-900 leading-tight truncate mt-0.5 select-none"
+                            style={{
+                              fontSize: `${Math.max(6, Math.min(9, (380 / gridCols) * 0.12))}px`,
+                            }}
+                          >
+                            {priceTagFormat === "name_price" && gridCols <= 4 ? (
+                              <span>
+                                {getCleanCardName(card.name).slice(0, 7)} <strong className="text-amber-800">${formatPrice(cardPrice)}</strong>
+                              </span>
+                            ) : (
+                              `$${formatPrice(cardPrice)}`
+                            )}
+                          </div>
                         )}
                       </div>
                     );
@@ -2434,8 +2671,8 @@ function PrintStudioModal({
                 </div>
 
                 {/* Subtle paper watermark in bottom corner */}
-                <div className="absolute bottom-1 right-2 text-[8px] font-mono text-slate-400 select-none">
-                  LungJi • {paperSize.toUpperCase()} • {gridCols}×{gridRows} ({cardsPerSheet}/sheet) • Scale {printScale}%
+                <div className="absolute bottom-1 right-2 text-[7px] font-mono text-slate-400 select-none">
+                  LungJi • {paperSize.toUpperCase()} • {gridCols}×{gridRows} ({cardsPerSheet}/sheet) • {printScale}%
                 </div>
               </div>
             </div>
@@ -2443,7 +2680,7 @@ function PrintStudioModal({
             {/* Bottom Info Bar in Preview Area */}
             <div className="w-full max-w-[500px] flex items-center justify-between text-xs text-slate-400 pt-3 border-t border-white/[0.06]">
               <span className="font-mono">
-                {cardsPerSheet} Cards / Sheet ({gridCols}×{gridRows})
+                {cardsPerSheet} Cards / Sheet ({gridCols}×{gridRows}) {showPriceOnPrint ? "• With Prices" : ""}
               </span>
               <button
                 type="button"
@@ -2473,6 +2710,8 @@ interface PrintCanvasProps {
   cuttingGuide: "hairline" | "dashed" | "none";
   gridCols: number;
   gridRows: number;
+  showPriceOnPrint: boolean;
+  priceTagFormat: "price_only" | "name_price";
 }
 
 function PrintCanvas({
@@ -2483,6 +2722,8 @@ function PrintCanvas({
   cuttingGuide,
   gridCols,
   gridRows,
+  showPriceOnPrint,
+  priceTagFormat,
 }: PrintCanvasProps) {
   const cardsPerSheet = gridCols * gridRows;
 
@@ -2510,6 +2751,7 @@ function PrintCanvas({
   const cardHeightMm = (88 * printScale) / 100;
   const paperWidthMm = paperSize === "a4" ? 210 : 215.9;
   const paperHeightMm = paperSize === "a4" ? 297 : 279.4;
+  const priceTagMm = showPriceOnPrint ? 3.8 : 0;
 
   const borderStyle =
     cuttingGuide === "hairline"
@@ -2541,40 +2783,83 @@ function PrintCanvas({
             style={{
               display: "grid",
               gridTemplateColumns: `repeat(${gridCols}, ${cardWidthMm}mm)`,
-              gridTemplateRows: `repeat(${gridRows}, ${cardHeightMm}mm)`,
+              gridTemplateRows: `repeat(${gridRows}, ${cardHeightMm + priceTagMm}mm)`,
               gap: `${cardGapMm}mm`,
               justifyContent: "center",
               alignContent: "center",
             }}
           >
-            {sheetCards.map((card: CKCard, cardIdx: number) => (
-              <div
-                key={`${sheetIdx}-${cardIdx}-${card.id}`}
-                style={{
-                  width: `${cardWidthMm}mm`,
-                  height: `${cardHeightMm}mm`,
-                  position: "relative",
-                  overflow: "hidden",
-                  border: borderStyle,
-                  boxSizing: "border-box",
-                  backgroundColor: "#000000",
-                }}
-              >
-                <img
-                  src={getCardImageUrl(card, "large")}
-                  alt={card.name}
-                  loading="eager"
-                  decoding="sync"
-                  crossOrigin="anonymous"
+            {sheetCards.map((card: CKCard, cardIdx: number) => {
+              const cardPrice = parseFloat(card.condition_values?.nm_price || card.price_retail) || 0;
+              return (
+                <div
+                  key={`${sheetIdx}-${cardIdx}-${card.id}`}
                   style={{
-                    width: "100%",
-                    height: "100%",
-                    objectFit: "cover",
-                    display: "block",
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    justifyContent: "flex-start",
+                    boxSizing: "border-box",
+                    width: `${cardWidthMm}mm`,
+                    height: `${cardHeightMm + priceTagMm}mm`,
                   }}
-                />
-              </div>
-            ))}
+                >
+                  <div
+                    style={{
+                      width: `${cardWidthMm}mm`,
+                      height: `${cardHeightMm}mm`,
+                      position: "relative",
+                      overflow: "hidden",
+                      border: borderStyle,
+                      boxSizing: "border-box",
+                      backgroundColor: "#000000",
+                    }}
+                  >
+                    <img
+                      src={getCardImageUrl(card, "large")}
+                      alt={card.name}
+                      loading="eager"
+                      decoding="sync"
+                      crossOrigin="anonymous"
+                      style={{
+                        width: "100%",
+                        height: "100%",
+                        objectFit: "cover",
+                        display: "block",
+                      }}
+                    />
+                  </div>
+
+                  {showPriceOnPrint && (
+                    <div
+                      style={{
+                        width: `${cardWidthMm}mm`,
+                        fontSize: `${Math.max(4.5, Math.min(8.5, cardWidthMm * 0.17))}pt`,
+                        fontWeight: 700,
+                        fontFamily: "monospace",
+                        textAlign: "center",
+                        lineHeight: 1.15,
+                        marginTop: "0.4mm",
+                        color: "#000000",
+                        whiteSpace: "nowrap",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        padding: "0 0.2mm",
+                      }}
+                    >
+                      {priceTagFormat === "name_price" && cardWidthMm >= 32 ? (
+                        <>
+                          <span style={{ fontWeight: 500 }}>{getCleanCardName(card.name).slice(0, 9)} </span>
+                          <span>${formatPrice(cardPrice)}</span>
+                        </>
+                      ) : (
+                        `$${formatPrice(cardPrice)}`
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </div>
       ))}
