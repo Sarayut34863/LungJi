@@ -1,9 +1,11 @@
 const https = require('https');
 const zlib = require('zlib');
+const fs = require('fs');
 const { DatabaseSync } = require('node:sqlite');
 const path = require('path');
 
 const dbPath = path.join(__dirname, '..', 'src', 'data', 'cards.db');
+const rarityPath = path.join(__dirname, '..', 'src', 'data', 'rarity-map.json');
 
 async function downloadPricelist() {
   console.log("Connecting to Card Kingdom API...");
@@ -44,6 +46,22 @@ async function downloadPricelist() {
   });
 }
 
+function cleanName(n) {
+  return (n || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9 ]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+const rarityCodeMap = {
+  c: "common",
+  u: "uncommon",
+  r: "rare",
+  m: "mythic",
+  s: "special"
+};
+
 async function run() {
   const jsonStr = await downloadPricelist();
   console.log("Parsing JSON...");
@@ -54,10 +72,17 @@ async function run() {
   console.log(`Loaded ${data.length} cards from Card Kingdom.`);
   console.log("Card Kingdom Meta Created At:", meta.created_at);
 
+  let rarityMap = {};
+  if (fs.existsSync(rarityPath)) {
+    try {
+      rarityMap = JSON.parse(fs.readFileSync(rarityPath, 'utf8'));
+    } catch {}
+  }
+
   console.log("Opening SQLite database:", dbPath);
   const db = new DatabaseSync(dbPath);
 
-  console.log("Starting bulk price update...");
+  console.log("Starting bulk price update and sync...");
   db.exec("BEGIN TRANSACTION;");
 
   const updateStmt = db.prepare(`
@@ -70,8 +95,19 @@ async function run() {
     WHERE id = ?
   `);
 
+  const insertStmt = db.prepare(`
+    INSERT INTO cards (
+      id, sku, scryfall_id, name, clean_name, edition, variation,
+      is_foil, rarity, price_retail, qty_retail, price_buy, qty_buying, url, condition_values
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `);
+
+  const insertFtsStmt = db.prepare(`
+    INSERT INTO cards_fts (rowid, clean_name, sku) VALUES (?, ?, ?)
+  `);
+
   let updatedCount = 0;
-  let skippedCount = 0;
+  let insertedCount = 0;
 
   for (let i = 0; i < data.length; i++) {
     const card = data[i];
@@ -91,7 +127,37 @@ async function run() {
     if (result.changes > 0) {
       updatedCount++;
     } else {
-      skippedCount++;
+      // Insert new card
+      const cName = cleanName(card.name);
+      const isFoil = card.is_foil === "true" || card.is_foil === true || card.is_foil === 1 ? 1 : 0;
+      let rarity = undefined;
+      if (card.scryfall_id && rarityMap[card.scryfall_id]) {
+        rarity = rarityCodeMap[rarityMap[card.scryfall_id]] || rarityMap[card.scryfall_id];
+      }
+
+      insertStmt.run(
+        card.id,
+        card.sku || "",
+        card.scryfall_id || "",
+        card.name,
+        cName,
+        card.edition || "Unknown",
+        card.variation || "",
+        isFoil,
+        rarity || null,
+        retail,
+        card.qty_retail || 0,
+        buy,
+        card.qty_buying || 0,
+        card.url || "",
+        condJson
+      );
+
+      try {
+        insertFtsStmt.run(card.id, cName, card.sku || "");
+      } catch {}
+
+      insertedCount++;
     }
   }
 
@@ -102,7 +168,7 @@ async function run() {
   metaStmt.run("total_cards", String(data.length));
 
   db.exec("COMMIT;");
-  console.log(`Done! Successfully updated ${updatedCount} cards in cards.db (${skippedCount} new/skipped).`);
+  console.log(`\nSync complete! Updated: ${updatedCount} | Inserted new: ${insertedCount} | Total in DB: ${data.length}`);
   console.log("Meta table updated with timestamp:", meta.created_at);
 }
 
