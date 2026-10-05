@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "sync-prices": "node scripts/sync-prices.js"
   },
   "dependencies": {
     "lucide-react": "^1.42.0",
