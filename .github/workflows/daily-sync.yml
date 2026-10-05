@@ -1,0 +1,31 @@
+name: Daily MTG Card Kingdom Price Sync
+
+on:
+  schedule:
+    # Runs automatically every day at 00:00 UTC (07:00 AM Thailand time)
+    - cron: '0 0 * * *'
+  workflow_dispatch: # Allows manual run button in GitHub Actions tab
+
+jobs:
+  sync-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Sync latest prices from Card Kingdom API
+        run: node scripts/sync-prices.js
+
+      - name: Commit and push updated database
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "chore(prices): automated daily Card Kingdom price sync"
+          file_pattern: "src/data/cards.db"
