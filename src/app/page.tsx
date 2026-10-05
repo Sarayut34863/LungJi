@@ -23,6 +23,11 @@ import {
   Settings2,
   FileText,
   CheckCircle2,
+  Zap,
+  MousePointer,
+  Grid,
+  SlidersHorizontal,
+  ChevronUp,
 } from "lucide-react";
 import { CKCard, EditionSummary } from "@/lib/cardkingdom";
 
@@ -769,7 +774,7 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen bg-[#090a0f] text-slate-100 selection:bg-amber-400/20 selection:text-amber-200">
-      <div className="flex flex-col min-h-screen">
+      <div className="flex flex-col min-h-screen no-print">
         
         {/* Top Navbar - Glassmorphic, crisp and understated */}
         <header
@@ -1356,48 +1361,48 @@ export default function HomePage() {
             </p>
           )}
         </footer>
+
+        {/* Floating mobile print button */}
+        {totalPrintCardCount > 0 && !isPrintModalOpen && (
+          <div className="fixed bottom-5 right-5 z-40 sm:hidden animate-in fade-in duration-200">
+            <button
+              type="button"
+              onClick={() => setIsPrintModalOpen(true)}
+              className="flex items-center gap-2 px-4 py-3 rounded-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs shadow-2xl ring-2 ring-amber-400/50 active:scale-95 transition cursor-pointer"
+            >
+              <Printer className="w-4 h-4" />
+              <span>Print ({totalPrintCardCount})</span>
+            </button>
+          </div>
+        )}
+
+        {/* MTG Card Print Studio Modal */}
+        {isPrintModalOpen && (
+          <PrintStudioModal
+            selectedCards={selectedCards}
+            onClose={() => setIsPrintModalOpen(false)}
+            onUpdateQuantity={updateCardQuantity}
+            onRemoveCard={removeCardFromPrint}
+            onClearAll={clearAllSelectedCards}
+            printScale={printScale}
+            setPrintScale={setPrintScale}
+            paperSize={paperSize}
+            setPaperSize={setPaperSize}
+            cardGapMm={cardGapMm}
+            setCardGapMm={setCardGapMm}
+            cuttingGuide={cuttingGuide}
+            setCuttingGuide={setCuttingGuide}
+            gridCols={gridCols}
+            setGridCols={setGridCols}
+            gridRows={gridRows}
+            setGridRows={setGridRows}
+            showPriceOnPrint={showPriceOnPrint}
+            setShowPriceOnPrint={setShowPriceOnPrint}
+            priceTagFormat={priceTagFormat}
+            setPriceTagFormat={setPriceTagFormat}
+          />
+        )}
       </div>
-
-      {/* Floating mobile print button */}
-      {totalPrintCardCount > 0 && !isPrintModalOpen && (
-        <div className="fixed bottom-5 right-5 z-40 sm:hidden animate-in fade-in duration-200">
-          <button
-            type="button"
-            onClick={() => setIsPrintModalOpen(true)}
-            className="flex items-center gap-2 px-4 py-3 rounded-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs shadow-2xl ring-2 ring-amber-400/50 active:scale-95 transition cursor-pointer"
-          >
-            <Printer className="w-4 h-4" />
-            <span>Print ({totalPrintCardCount})</span>
-          </button>
-        </div>
-      )}
-
-      {/* MTG Card Print Studio Modal */}
-      {isPrintModalOpen && (
-        <PrintStudioModal
-          selectedCards={selectedCards}
-          onClose={() => setIsPrintModalOpen(false)}
-          onUpdateQuantity={updateCardQuantity}
-          onRemoveCard={removeCardFromPrint}
-          onClearAll={clearAllSelectedCards}
-          printScale={printScale}
-          setPrintScale={setPrintScale}
-          paperSize={paperSize}
-          setPaperSize={setPaperSize}
-          cardGapMm={cardGapMm}
-          setCardGapMm={setCardGapMm}
-          cuttingGuide={cuttingGuide}
-          setCuttingGuide={setCuttingGuide}
-          gridCols={gridCols}
-          setGridCols={setGridCols}
-          gridRows={gridRows}
-          setGridRows={setGridRows}
-          showPriceOnPrint={showPriceOnPrint}
-          setShowPriceOnPrint={setShowPriceOnPrint}
-          priceTagFormat={priceTagFormat}
-          setPriceTagFormat={setPriceTagFormat}
-        />
-      )}
 
       {/* Dedicated Print Canvas for Paper Output (Hidden on screen, active in @media print) */}
       {totalPrintCardCount > 0 && (
@@ -1935,12 +1940,19 @@ function PrintStudioModal({
 
   // Trigger browser native print dialog
   const handlePrint = () => {
-    window.print();
+    if (typeof document !== "undefined" && document.activeElement instanceof HTMLElement) {
+      document.activeElement.blur();
+    }
+    setTimeout(() => {
+      window.print();
+    }, 50);
   };
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 md:p-6 bg-black/85 backdrop-blur-md animate-in fade-in duration-150"
+      className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 md:p-6 bg-black/85 backdrop-blur-md animate-in fade-in duration-150 no-print"
+      role="dialog"
+      aria-modal="true"
       onClick={onClose}
     >
       <div
@@ -2015,35 +2027,38 @@ function PrintStudioModal({
                 <button
                   type="button"
                   onClick={() => setActiveTab("density")}
-                  className={`flex-1 py-1 rounded-lg font-medium transition cursor-pointer text-center ${
+                  className={`flex-1 py-1 rounded-lg font-medium transition cursor-pointer text-center flex items-center justify-center gap-1.5 ${
                     activeTab === "density"
                       ? "bg-amber-500 text-slate-950 font-bold shadow-sm"
                       : "text-slate-400 hover:text-white"
                   }`}
                 >
-                  🚀 High Density (เยอะสุด)
+                  <Zap className="w-3.5 h-3.5" />
+                  <span>High Density (เยอะสุด)</span>
                 </button>
                 <button
                   type="button"
                   onClick={() => setActiveTab("standard")}
-                  className={`flex-1 py-1 rounded-lg font-medium transition cursor-pointer text-center ${
+                  className={`flex-1 py-1 rounded-lg font-medium transition cursor-pointer text-center flex items-center justify-center gap-1.5 ${
                     activeTab === "standard"
                       ? "bg-amber-500 text-slate-950 font-bold shadow-sm"
                       : "text-slate-400 hover:text-white"
                   }`}
                 >
-                  Standard (ปกติ)
+                  <Grid className="w-3.5 h-3.5" />
+                  <span>Standard (ปกติ)</span>
                 </button>
                 <button
                   type="button"
                   onClick={() => setActiveTab("custom")}
-                  className={`flex-1 py-1 rounded-lg font-medium transition cursor-pointer text-center ${
+                  className={`flex-1 py-1 rounded-lg font-medium transition cursor-pointer text-center flex items-center justify-center gap-1.5 ${
                     activeTab === "custom"
                       ? "bg-amber-500 text-slate-950 font-bold shadow-sm"
                       : "text-slate-400 hover:text-white"
                   }`}
                 >
-                  Custom (กำหนดเอง)
+                  <SlidersHorizontal className="w-3.5 h-3.5" />
+                  <span>Custom (กำหนดเอง)</span>
                 </button>
               </div>
 
@@ -2231,7 +2246,10 @@ function PrintStudioModal({
                     <Settings2 className="w-3 h-3" />
                     <span>Fine-tune scale slider (optional)</span>
                   </span>
-                  <span>{showFineTune ? "Hide ▲" : "Show ▼"}</span>
+                  <span className="flex items-center gap-1 text-[10px]">
+                    <span>{showFineTune ? "Hide" : "Show"}</span>
+                    {showFineTune ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                  </span>
                 </button>
 
                 {showFineTune && (
@@ -2556,7 +2574,7 @@ function PrintStudioModal({
                     onClick={() => setPreviewSheetIndex((p) => Math.max(0, p - 1))}
                     disabled={currentSheetIndex === 0}
                     className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white/[0.06] hover:bg-white/[0.1] text-xs text-slate-200 disabled:opacity-30 disabled:pointer-events-none transition cursor-pointer"
-                    title="Previous sheet (Left Arrow ← or Wheel Up)"
+                    title="Previous sheet (Left Arrow or Wheel Up)"
                   >
                     <ChevronLeft className="w-3.5 h-3.5" />
                     <span>Prev</span>
@@ -2569,7 +2587,7 @@ function PrintStudioModal({
                     onClick={() => setPreviewSheetIndex((p) => Math.min(sheets.length - 1, p + 1))}
                     disabled={currentSheetIndex >= sheets.length - 1}
                     className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white/[0.06] hover:bg-white/[0.1] text-xs text-slate-200 disabled:opacity-30 disabled:pointer-events-none transition cursor-pointer"
-                    title="Next sheet (Right Arrow → or Wheel Down)"
+                    title="Next sheet (Right Arrow or Wheel Down)"
                   >
                     <span>Next</span>
                     <ChevronRight className="w-3.5 h-3.5" />
@@ -2587,7 +2605,8 @@ function PrintStudioModal({
               {/* Floating mouse wheel badge */}
               {sheets.length > 1 && (
                 <div className="mb-2 px-3 py-0.5 rounded-full bg-amber-400/15 border border-amber-400/30 text-[11px] text-amber-300 font-medium flex items-center gap-1.5 shadow-sm">
-                  <span>🖱️ Scroll mouse wheel over paper to change pages ({currentSheetIndex + 1}/{sheets.length})</span>
+                  <MousePointer className="w-3.5 h-3.5 text-amber-400" />
+                  <span>Scroll mouse wheel over paper to change pages ({currentSheetIndex + 1}/{sheets.length})</span>
                 </div>
               )}
 
@@ -2820,7 +2839,6 @@ function PrintCanvas({
                       alt={card.name}
                       loading="eager"
                       decoding="sync"
-                      crossOrigin="anonymous"
                       style={{
                         width: "100%",
                         height: "100%",
