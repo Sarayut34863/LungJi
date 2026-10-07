@@ -399,7 +399,7 @@ export function DynamicMultiSortControl({
       {/* Active Sort Rows with Hamburger (☰) Reorder Handle */}
       {isSelectionOrder ? (
         <div className="p-2.5 rounded-xl bg-[#090b12] border border-white/[0.08] text-xs text-slate-400 flex items-center justify-between">
-          <span className="font-medium text-slate-300">As Added (Selection Order)</span>
+          <span className="font-medium text-slate-300">Selection Order</span>
           <span className="text-[10px] text-slate-500 font-mono">Original</span>
         </div>
       ) : (
@@ -582,7 +582,7 @@ export function DynamicMultiSortControl({
               : "bg-[#0b0d14] border-white/[0.08] text-slate-400 hover:text-slate-200"
           }`}
         >
-          Reset to Selection Order (As Added)
+          Reset to Selection Order
         </button>
       )}
 
@@ -1578,7 +1578,7 @@ export default function HomePage() {
                       className="text-[10px] text-slate-400 hover:text-amber-400 transition cursor-pointer"
                       title="Reset rarity"
                     >
-                      Reset ({selectedRarities.length})
+                      Reset
                     </button>
                   )}
                 </div>
@@ -1681,7 +1681,7 @@ export default function HomePage() {
                       className="text-[10px] text-slate-400 hover:text-amber-400 transition cursor-pointer"
                       title="Reset color"
                     >
-                      Reset ({selectedColors.length})
+                      Reset
                     </button>
                   )}
                 </div>
@@ -1791,9 +1791,9 @@ export default function HomePage() {
                         setCurrentPage(1);
                       }}
                       className="text-[10px] text-amber-400 hover:text-amber-300 transition cursor-pointer"
-                      title="Hide tokens (Default)"
+                      title="Hide tokens"
                     >
-                      Reset (Hide)
+                      Reset
                     </button>
                   )}
                 </div>
@@ -1809,7 +1809,7 @@ export default function HomePage() {
                         ? "bg-white/[0.08] text-white font-semibold border border-white/[0.08]"
                         : "text-slate-400 hover:text-slate-200"
                     }`}
-                    title="Hide all token cards (Default)"
+                    title="Hide token cards"
                   >
                     Hide
                   </button>
@@ -1854,9 +1854,9 @@ export default function HomePage() {
                       type="button"
                       onClick={() => handleSetThbMultiplier(35)}
                       className="text-[10px] text-slate-400 hover:text-amber-400 transition cursor-pointer"
-                      title="Reset to 35"
+                      title="Reset rate"
                     >
-                      Reset (35)
+                      Reset
                     </button>
                   )}
                 </div>
@@ -1981,7 +1981,7 @@ export default function HomePage() {
                         setCurrentPage(1);
                       }}
                       className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-400/10 hover:bg-amber-400/15 border border-amber-400/25 text-amber-300 text-[11px] transition group"
-                      title="Hide tokens (Default)"
+                      title="Hide tokens"
                     >
                       <span>Tokens: Included</span>
                       <X className="w-3 h-3 text-amber-400/70 group-hover:text-amber-300 shrink-0" />
@@ -3107,8 +3107,8 @@ function PrintStudioModal({
                           : "bg-[#090b12] border-white/[0.06] text-slate-400 hover:text-white"
                       }`}
                     >
-                      <div className="text-xs font-medium">Standard MTG (100%)</div>
-                      <div className="text-[10px] text-slate-500 font-mono">63 × 88 mm (Sleeve Size)</div>
+                      <div className="text-xs font-medium">Standard MTG 100%</div>
+                      <div className="text-[10px] text-slate-500 font-mono">63 × 88 mm</div>
                     </button>
                     <button
                       type="button"
@@ -3123,7 +3123,7 @@ function PrintStudioModal({
                           : "bg-[#090b12] border-white/[0.06] text-slate-400 hover:text-white"
                       }`}
                     >
-                      <div className="text-xs font-medium">Fit to Page (Auto)</div>
+                      <div className="text-xs font-medium">Fit to Page</div>
                       <div className="text-[10px] text-slate-500 font-mono">
                         Auto-scale: {autoFitScale}%
                       </div>
@@ -3213,7 +3213,7 @@ function PrintStudioModal({
                 >
                   <span className="flex items-center gap-1">
                     <Settings2 className="w-3 h-3" />
-                    <span>Fine-tune scale slider (optional)</span>
+                    <span>Fine-tune scale slider</span>
                   </span>
                   <span className="flex items-center gap-1 text-[10px]">
                     <span>{showFineTune ? "Hide" : "Show"}</span>
@@ -3237,7 +3237,7 @@ function PrintStudioModal({
                     />
                     <div className="flex justify-between text-[10px] text-slate-500 font-mono">
                       <span>25%</span>
-                      <span>100% (Standard)</span>
+                      <span>100% Standard</span>
                       <span>160%</span>
                     </div>
                   </div>
@@ -3362,7 +3362,7 @@ function PrintStudioModal({
               {/* Card Gap (Spacing) */}
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs text-slate-300">Cut Gap (Spacing)</span>
+                  <span className="text-xs text-slate-300">Cut Gap</span>
                   <span className="text-xs font-mono text-amber-400 font-semibold">{cardGapMm} mm</span>
                 </div>
                 <div className="grid grid-cols-4 gap-1.5">
