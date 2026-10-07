@@ -6,6 +6,17 @@ const path = require('path');
 
 const dbPath = path.join(__dirname, '..', 'src', 'data', 'cards.db');
 const rarityPath = path.join(__dirname, '..', 'src', 'data', 'rarity-map.json');
+const colorMapPath = path.join(__dirname, '..', 'src', 'data', 'color-map.json');
+
+function getCollectorNumber(sku) {
+  if (!sku) return 999999;
+  const parts = sku.split('-');
+  if (parts.length >= 2) {
+    const num = parseInt(parts.slice(1).join('-'), 10);
+    return isNaN(num) ? 999999 : num;
+  }
+  return 999999;
+}
 
 async function downloadPricelist() {
   console.log("Connecting to Card Kingdom API...");
@@ -79,6 +90,13 @@ async function run() {
     } catch {}
   }
 
+  let colorMap = {};
+  if (fs.existsSync(colorMapPath)) {
+    try {
+      colorMap = JSON.parse(fs.readFileSync(colorMapPath, 'utf8'));
+    } catch {}
+  }
+
   console.log("Opening SQLite database:", dbPath);
   const db = new DatabaseSync(dbPath);
 
@@ -98,8 +116,9 @@ async function run() {
   const insertStmt = db.prepare(`
     INSERT INTO cards (
       id, sku, scryfall_id, name, clean_name, edition, variation,
-      is_foil, rarity, price_retail, qty_retail, price_buy, qty_buying, url, condition_values
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      is_foil, rarity, price_retail, qty_retail, price_buy, qty_buying, url, condition_values,
+      collector_number, color, color_order
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
 
   const insertFtsStmt = db.prepare(`
@@ -135,6 +154,9 @@ async function run() {
         rarity = rarityCodeMap[rarityMap[card.scryfall_id]] || rarityMap[card.scryfall_id];
       }
 
+      const colNum = getCollectorNumber(card.sku);
+      const colorData = colorMap[cName] || { color: 'C', order: 7 };
+
       insertStmt.run(
         card.id,
         card.sku || "",
@@ -150,7 +172,10 @@ async function run() {
         buy,
         card.qty_buying || 0,
         card.url || "",
-        condJson
+        condJson,
+        colNum,
+        colorData.color || 'C',
+        colorData.order || 7
       );
 
       try {
@@ -168,6 +193,14 @@ async function run() {
   metaStmt.run("total_cards", String(data.length));
 
   db.exec("COMMIT;");
+
+  db.exec(`
+    CREATE INDEX IF NOT EXISTS idx_cards_collector_number ON cards (collector_number ASC);
+    CREATE INDEX IF NOT EXISTS idx_cards_color_price ON cards (color_order ASC, price_retail DESC);
+    CREATE INDEX IF NOT EXISTS idx_cards_edition_collector ON cards (edition, collector_number ASC);
+    CREATE INDEX IF NOT EXISTS idx_cards_edition_color_price ON cards (edition, color_order ASC, price_retail DESC);
+  `);
+
   console.log(`\nSync complete! Updated: ${updatedCount} | Inserted new: ${insertedCount} | Total in DB: ${data.length}`);
   console.log("Meta table updated with timestamp:", meta.created_at);
 }

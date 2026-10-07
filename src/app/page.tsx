@@ -422,7 +422,7 @@ export default function HomePage() {
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [foilFilter, setFoilFilter] = useState<"all" | "foil" | "nonfoil">("all");
   const [selectedRarities, setSelectedRarities] = useState<string[]>([]);
-  const [sortBy, setSortBy] = useState<"price_desc" | "price_asc" | "name_asc">("price_desc");
+  const [sortBy, setSortBy] = useState<string>("price_desc");
   const [rowsPerPage, setRowsPerPage] = useState<number>(24);
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [mobileFilterOpen, setMobileFilterOpen] = useState<boolean>(false);
@@ -452,6 +452,7 @@ export default function HomePage() {
   const [gridRows, setGridRows] = useState<number>(3);
   const [showPriceOnPrint, setShowPriceOnPrint] = useState<boolean>(true);
   const [priceTagFormat, setPriceTagFormat] = useState<"price_only" | "name_price">("price_only");
+  const [printSort, setPrintSort] = useState<string>("added");
 
   const totalPrintCardCount = Object.values(selectedCards).reduce((acc, c) => acc + c.quantity, 0);
 
@@ -1093,21 +1094,37 @@ export default function HomePage() {
 
               {/* Sort Order */}
               <div className="space-y-1.5 border-b border-white/[0.06] pb-3.5">
-                <div className="flex items-center gap-1.5">
-                  <label className="text-xs font-semibold text-slate-200">Sort By</label>
-                  <ArrowUpDown className="w-3.5 h-3.5 text-slate-400" />
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5">
+                    <label className="text-xs font-semibold text-slate-200">Sort By</label>
+                    <ArrowUpDown className="w-3.5 h-3.5 text-slate-400" />
+                  </div>
+                  {sortBy.includes("color") && (
+                    <span className="text-[10px] text-amber-400 font-mono font-medium">WUBRG</span>
+                  )}
                 </div>
                 <select
                   value={sortBy}
                   onChange={(e) => {
-                    setSortBy(e.target.value as typeof sortBy);
+                    setSortBy(e.target.value);
                     setCurrentPage(1);
                   }}
-                  className="w-full bg-[#0b0d14] border border-white/[0.08] rounded-lg px-3 py-2 text-xs text-slate-200 outline-none focus:border-amber-400/60 cursor-pointer"
+                  className="w-full bg-[#0b0d14] border border-white/[0.08] rounded-lg px-2.5 py-2 text-xs text-slate-200 outline-none focus:border-amber-400/60 cursor-pointer"
                 >
-                  <option value="price_desc">Price: High to Low</option>
-                  <option value="price_asc">Price: Low to High</option>
-                  <option value="name_asc">Card Name: A to Z</option>
+                  <optgroup label="Single Sort" className="bg-[#12141f] text-slate-400 font-semibold">
+                    <option value="price_desc" className="text-slate-200">Price: High to Low</option>
+                    <option value="price_asc" className="text-slate-200">Price: Low to High</option>
+                    <option value="number_asc" className="text-slate-200">Collector Number: 1 to 999</option>
+                    <option value="number_desc" className="text-slate-200">Collector Number: 999 to 1</option>
+                    <option value="color_asc" className="text-slate-200">Color: WUBRG (White to Land)</option>
+                    <option value="name_asc" className="text-slate-200">Card Name: A to Z</option>
+                  </optgroup>
+                  <optgroup label="Multi-Sort (Combined)" className="bg-[#12141f] text-slate-400 font-semibold">
+                    <option value="color_price_desc" className="text-slate-200">Color then Price: High to Low</option>
+                    <option value="color_price_asc" className="text-slate-200">Color then Price: Low to High</option>
+                    <option value="color_number_asc" className="text-slate-200">Color then Collector Number</option>
+                    <option value="number_price_desc" className="text-slate-200">Collector Number then Price: High to Low</option>
+                  </optgroup>
                 </select>
               </div>
 
@@ -1411,6 +1428,8 @@ export default function HomePage() {
             setShowPriceOnPrint={setShowPriceOnPrint}
             priceTagFormat={priceTagFormat}
             setPriceTagFormat={setPriceTagFormat}
+            printSort={printSort}
+            setPrintSort={setPrintSort}
           />
         )}
       </div>
@@ -1427,6 +1446,7 @@ export default function HomePage() {
           gridRows={gridRows}
           showPriceOnPrint={showPriceOnPrint}
           priceTagFormat={priceTagFormat}
+          printSort={printSort}
         />
       )}
     </div>
@@ -1711,14 +1731,68 @@ function ArchidektCardItem({
       </div>
 
       {/* DIRECT UNDER-CARD FOOTER */}
-      <div className="mt-1.5 flex items-center justify-between px-0.5 text-xs">
-        {/* Card Kingdom Castle Icon & Price */}
-        <div
-          className="flex items-center gap-1.5 text-amber-400 hover:text-amber-300 font-mono tabular-nums text-xs font-semibold tracking-tight transition-colors"
-          title="Card Kingdom Near Mint (NM) Price"
-        >
-          <CardKingdomIcon className="w-3.5 h-2.5 text-amber-400" />
-          <span>${formatPrice(nmPrice)}</span>
+      <div className="mt-1.5 flex items-center justify-between px-0.5 text-xs gap-1">
+        {/* Card Kingdom Castle Icon, Price & Badges */}
+        <div className="flex items-center gap-1.5 min-w-0 overflow-hidden">
+          <div
+            className="flex items-center gap-1 text-amber-400 hover:text-amber-300 font-mono tabular-nums text-xs font-semibold tracking-tight transition-colors shrink-0"
+            title="Card Kingdom Near Mint (NM) Price"
+          >
+            <CardKingdomIcon className="w-3.5 h-2.5 text-amber-400 shrink-0" />
+            <span>${formatPrice(nmPrice)}</span>
+          </div>
+
+          {/* Collector Number Badge if available */}
+          {card.collector_number && card.collector_number < 900000 && (
+            <span
+              className="text-[10px] font-mono text-slate-400 bg-white/[0.05] border border-white/[0.08] px-1 py-0.5 rounded leading-none shrink-0"
+              title={`Collector Number #${card.collector_number}`}
+            >
+              #{card.collector_number}
+            </span>
+          )}
+
+          {/* Color Indicator Badge if available */}
+          {card.color && (
+            <span
+              className={`text-[9px] font-mono font-bold px-1 py-0.5 rounded leading-none shrink-0 ${
+                card.color === "W"
+                  ? "text-amber-100 bg-amber-950/40 border border-amber-300/30"
+                  : card.color === "U"
+                  ? "text-blue-300 bg-blue-950/40 border border-blue-400/30"
+                  : card.color === "B"
+                  ? "text-purple-200 bg-purple-950/40 border border-purple-400/30"
+                  : card.color === "R"
+                  ? "text-red-300 bg-red-950/40 border border-red-400/30"
+                  : card.color === "G"
+                  ? "text-emerald-300 bg-emerald-950/40 border border-emerald-400/30"
+                  : card.color === "M"
+                  ? "text-amber-300 bg-amber-500/20 border border-amber-400/40"
+                  : card.color === "L"
+                  ? "text-orange-200 bg-stone-900 border border-stone-600/40"
+                  : "text-slate-400 bg-white/[0.05] border border-white/[0.08]"
+              }`}
+              title={`Color: ${
+                card.color === "W"
+                  ? "White"
+                  : card.color === "U"
+                  ? "Blue"
+                  : card.color === "B"
+                  ? "Black"
+                  : card.color === "R"
+                  ? "Red"
+                  : card.color === "G"
+                  ? "Green"
+                  : card.color === "M"
+                  ? "Multicolor"
+                  : card.color === "L"
+                  ? "Land"
+                  : "Colorless"
+              }`}
+            >
+              {card.color}
+            </span>
+          )}
         </div>
 
         {/* Card Selection Status Indicator / Button */}
@@ -1728,7 +1802,7 @@ function ArchidektCardItem({
             e.stopPropagation();
             onToggleSelect();
           }}
-          className={`px-2 py-0.5 rounded-md text-[11px] font-semibold transition active:scale-95 cursor-pointer flex items-center gap-1 ${
+          className={`px-2 py-0.5 rounded-md text-[11px] font-semibold transition active:scale-95 cursor-pointer flex items-center gap-1 shrink-0 ${
             isSelected
               ? "bg-amber-400/20 text-amber-300 border border-amber-400/50 hover:bg-amber-400/30"
               : "text-slate-400 hover:text-slate-200 bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.06]"
@@ -1755,6 +1829,74 @@ function ArchidektCardItem({
 // ========================================================
 // MTG CARD PRINT STUDIO MODAL & SHEET PREVIEW
 // ========================================================
+function sortCardsList(cards: CKCard[], sortMode: string = "added"): CKCard[] {
+  if (!sortMode || sortMode === "added") return cards;
+  const list = [...cards];
+  switch (sortMode) {
+    case "color_asc":
+      return list.sort((a, b) => {
+        const cA = a.color_order ?? 7;
+        const cB = b.color_order ?? 7;
+        if (cA !== cB) return cA - cB;
+        return (a.collector_number ?? 999999) - (b.collector_number ?? 999999);
+      });
+    case "color_price_desc":
+      return list.sort((a, b) => {
+        const cA = a.color_order ?? 7;
+        const cB = b.color_order ?? 7;
+        if (cA !== cB) return cA - cB;
+        const pA = parseFloat(a.condition_values?.nm_price || a.price_retail) || 0;
+        const pB = parseFloat(b.condition_values?.nm_price || b.price_retail) || 0;
+        return pB - pA;
+      });
+    case "color_price_asc":
+      return list.sort((a, b) => {
+        const cA = a.color_order ?? 7;
+        const cB = b.color_order ?? 7;
+        if (cA !== cB) return cA - cB;
+        const pA = parseFloat(a.condition_values?.nm_price || a.price_retail) || 0;
+        const pB = parseFloat(b.condition_values?.nm_price || b.price_retail) || 0;
+        return pA - pB;
+      });
+    case "color_number_asc":
+      return list.sort((a, b) => {
+        const cA = a.color_order ?? 7;
+        const cB = b.color_order ?? 7;
+        if (cA !== cB) return cA - cB;
+        return (a.collector_number ?? 999999) - (b.collector_number ?? 999999);
+      });
+    case "number_asc":
+      return list.sort((a, b) => (a.collector_number ?? 999999) - (b.collector_number ?? 999999));
+    case "number_desc":
+      return list.sort((a, b) => (b.collector_number ?? 999999) - (a.collector_number ?? 999999));
+    case "number_price_desc":
+      return list.sort((a, b) => {
+        const nA = a.collector_number ?? 999999;
+        const nB = b.collector_number ?? 999999;
+        if (nA !== nB) return nA - nB;
+        const pA = parseFloat(a.condition_values?.nm_price || a.price_retail) || 0;
+        const pB = parseFloat(b.condition_values?.nm_price || b.price_retail) || 0;
+        return pB - pA;
+      });
+    case "price_desc":
+      return list.sort((a, b) => {
+        const pA = parseFloat(a.condition_values?.nm_price || a.price_retail) || 0;
+        const pB = parseFloat(b.condition_values?.nm_price || b.price_retail) || 0;
+        return pB - pA;
+      });
+    case "price_asc":
+      return list.sort((a, b) => {
+        const pA = parseFloat(a.condition_values?.nm_price || a.price_retail) || 0;
+        const pB = parseFloat(b.condition_values?.nm_price || b.price_retail) || 0;
+        return pA - pB;
+      });
+    case "name_asc":
+      return list.sort((a, b) => a.name.localeCompare(b.name));
+    default:
+      return list;
+  }
+}
+
 interface PrintStudioModalProps {
   selectedCards: Record<string, { card: CKCard; quantity: number }>;
   onClose: () => void;
@@ -1777,6 +1919,8 @@ interface PrintStudioModalProps {
   setShowPriceOnPrint: (show: boolean) => void;
   priceTagFormat: "price_only" | "name_price";
   setPriceTagFormat: (fmt: "price_only" | "name_price") => void;
+  printSort?: string;
+  setPrintSort?: (sort: string) => void;
 }
 
 function PrintStudioModal({
@@ -1801,6 +1945,8 @@ function PrintStudioModal({
   setShowPriceOnPrint,
   priceTagFormat,
   setPriceTagFormat,
+  printSort = "added",
+  setPrintSort,
 }: PrintStudioModalProps) {
   // Number of cards per sheet based on grid layout
   const cardsPerSheet = gridCols * gridRows;
@@ -1823,8 +1969,8 @@ function PrintStudioModal({
         list.push(card);
       }
     });
-    return list;
-  }, [printCardsList]);
+    return sortCardsList(list, printSort);
+  }, [printCardsList, printSort]);
 
   // Group into sheets based on user's cardsPerSheet selection
   const sheets = useMemo<CKCard[][]>(() => {
@@ -2486,6 +2632,41 @@ function PrintStudioModal({
                 )}
               </div>
 
+              {printCardsList.length > 0 && setPrintSort && (
+                <div className="space-y-1.5 pt-1 pb-1 border-b border-white/[0.06]">
+                  <div className="flex items-center justify-between text-[11px] text-slate-300">
+                    <span className="flex items-center gap-1.5 font-semibold">
+                      <ArrowUpDown className="w-3.5 h-3.5 text-amber-400" />
+                      <span>Print Order on Sheets</span>
+                    </span>
+                    {printSort.includes("color") && (
+                      <span className="text-[10px] text-amber-400 font-mono font-medium">WUBRG</span>
+                    )}
+                  </div>
+                  <select
+                    value={printSort}
+                    onChange={(e) => setPrintSort(e.target.value)}
+                    className="w-full bg-[#090b12] border border-white/[0.08] rounded-xl px-2.5 py-1.5 text-xs text-slate-200 outline-none focus:border-amber-400/60 cursor-pointer"
+                  >
+                    <option value="added">As Added (Selection Order)</option>
+                    <optgroup label="Single Sort" className="bg-[#12141f] text-slate-400 font-semibold">
+                      <option value="color_asc" className="text-slate-200">Color: WUBRG (White to Land)</option>
+                      <option value="number_asc" className="text-slate-200">Collector Number: 1 to 999</option>
+                      <option value="number_desc" className="text-slate-200">Collector Number: 999 to 1</option>
+                      <option value="price_desc" className="text-slate-200">Price: High to Low</option>
+                      <option value="price_asc" className="text-slate-200">Price: Low to High</option>
+                      <option value="name_asc" className="text-slate-200">Card Name: A to Z</option>
+                    </optgroup>
+                    <optgroup label="Multi-Sort (Combined)" className="bg-[#12141f] text-slate-400 font-semibold">
+                      <option value="color_price_desc" className="text-slate-200">Color then Price: High to Low</option>
+                      <option value="color_price_asc" className="text-slate-200">Color then Price: Low to High</option>
+                      <option value="color_number_asc" className="text-slate-200">Color then Collector Number</option>
+                      <option value="number_price_desc" className="text-slate-200">Collector Number then Price: High to Low</option>
+                    </optgroup>
+                  </select>
+                </div>
+              )}
+
               {printCardsList.length === 0 ? (
                 <div className="py-8 text-center space-y-2">
                   <PackageX className="w-8 h-8 text-slate-600 mx-auto" />
@@ -2742,6 +2923,7 @@ interface PrintCanvasProps {
   gridRows: number;
   showPriceOnPrint: boolean;
   priceTagFormat: "price_only" | "name_price";
+  printSort?: string;
 }
 
 function PrintCanvas({
@@ -2754,6 +2936,7 @@ function PrintCanvas({
   gridRows,
   showPriceOnPrint,
   priceTagFormat,
+  printSort = "added",
 }: PrintCanvasProps) {
   const cardsPerSheet = gridCols * gridRows;
 
@@ -2764,8 +2947,8 @@ function PrintCanvas({
         list.push(card);
       }
     });
-    return list;
-  }, [selectedCards]);
+    return sortCardsList(list, printSort);
+  }, [selectedCards, printSort]);
 
   const sheets = useMemo<CKCard[][]>(() => {
     const res: CKCard[][] = [];

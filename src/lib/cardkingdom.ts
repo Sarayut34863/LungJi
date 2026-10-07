@@ -30,6 +30,9 @@ export interface CKCard {
   price_buy: string;
   qty_buying: number;
   condition_values?: CardConditionValues;
+  collector_number?: number;
+  color?: string;
+  color_order?: number;
 }
 
 import editionCodesData from "@/data/edition-codes.json";
@@ -51,7 +54,7 @@ export interface SearchParams {
   inStock?: boolean;
   minPrice?: number;
   maxPrice?: number;
-  sortBy?: "price_desc" | "price_asc" | "buy_desc" | "name_asc";
+  sortBy?: string;
   page?: number;
   limit?: number;
 }
@@ -286,10 +289,74 @@ export async function searchCards(params: SearchParams) {
 
   const whereClause = where.length > 0 ? `WHERE ${where.join(" AND ")}` : "";
 
-  let orderClause = "ORDER BY price_retail DESC";
-  if (sortBy === "price_asc") orderClause = "ORDER BY price_retail ASC";
-  else if (sortBy === "buy_desc") orderClause = "ORDER BY price_buy DESC";
-  else if (sortBy === "name_asc") orderClause = "ORDER BY name ASC";
+  function parseSortOrder(sort: string = "price_desc"): string {
+    switch (sort) {
+      case "price_desc":
+        return "ORDER BY price_retail DESC, name ASC";
+      case "price_asc":
+        return "ORDER BY price_retail ASC, name ASC";
+      case "buy_desc":
+        return "ORDER BY price_buy DESC, name ASC";
+      case "name_asc":
+        return "ORDER BY name ASC";
+      case "name_desc":
+        return "ORDER BY name DESC";
+      case "number_asc":
+      case "collector_asc":
+        return "ORDER BY collector_number ASC, price_retail DESC";
+      case "number_desc":
+      case "collector_desc":
+        return "ORDER BY collector_number DESC, price_retail DESC";
+      case "color_asc":
+      case "color_wubrg":
+        return "ORDER BY color_order ASC, collector_number ASC, name ASC";
+      case "color_desc":
+        return "ORDER BY color_order DESC, collector_number ASC, name ASC";
+      case "color_price_desc":
+        return "ORDER BY color_order ASC, price_retail DESC, name ASC";
+      case "color_price_asc":
+        return "ORDER BY color_order ASC, price_retail ASC, name ASC";
+      case "color_number_asc":
+        return "ORDER BY color_order ASC, collector_number ASC, price_retail DESC";
+      case "number_price_desc":
+        return "ORDER BY collector_number ASC, price_retail DESC";
+      case "price_number_asc":
+        return "ORDER BY price_retail DESC, collector_number ASC";
+    }
+
+    // Flexible multi-sort parser for comma-separated tokens (e.g. "color_asc,price_desc")
+    const clauses: string[] = [];
+    const parts = sort.split(",").map((s) => s.trim().toLowerCase()).filter(Boolean);
+    for (const part of parts) {
+      if (part === "color" || part === "color_asc" || part === "color_order" || part === "color_order_asc") {
+        clauses.push("color_order ASC");
+      } else if (part === "color_desc" || part === "color_order_desc") {
+        clauses.push("color_order DESC");
+      } else if (part === "price" || part === "price_desc" || part === "price_retail_desc") {
+        clauses.push("price_retail DESC");
+      } else if (part === "price_asc" || part === "price_retail_asc") {
+        clauses.push("price_retail ASC");
+      } else if (part === "number" || part === "number_asc" || part === "collector" || part === "collector_asc") {
+        clauses.push("collector_number ASC");
+      } else if (part === "number_desc" || part === "collector_desc") {
+        clauses.push("collector_number DESC");
+      } else if (part === "name" || part === "name_asc") {
+        clauses.push("name ASC");
+      } else if (part === "name_desc") {
+        clauses.push("name DESC");
+      } else if (part === "buy_desc") {
+        clauses.push("price_buy DESC");
+      }
+    }
+
+    if (clauses.length > 0) {
+      return `ORDER BY ${Array.from(new Set(clauses)).join(", ")}`;
+    }
+
+    return "ORDER BY price_retail DESC, name ASC";
+  }
+
+  const orderClause = parseSortOrder(sortBy);
 
   // Fast count query using index
   const countSql = `SELECT COUNT(*) as total FROM cards ${whereClause}`;
@@ -319,6 +386,9 @@ export async function searchCards(params: SearchParams) {
     qty_buying: number;
     url: string | null;
     condition_values: string | null;
+    collector_number: number | null;
+    color: string | null;
+    color_order: number | null;
   }[];
 
   const cards: CKCard[] = rows.map((r) => {
@@ -343,6 +413,9 @@ export async function searchCards(params: SearchParams) {
       price_buy: typeof r.price_buy === "number" ? r.price_buy.toFixed(2) : String(r.price_buy),
       qty_buying: r.qty_buying || 0,
       condition_values: conds,
+      collector_number: typeof r.collector_number === "number" && r.collector_number < 900000 ? r.collector_number : undefined,
+      color: r.color || undefined,
+      color_order: typeof r.color_order === "number" ? r.color_order : undefined,
     };
   });
 
