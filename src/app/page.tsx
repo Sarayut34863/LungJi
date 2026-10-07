@@ -1393,25 +1393,33 @@ export default function HomePage() {
           }`}
         >
           <div className="max-w-[1850px] mx-auto px-4 sm:px-6 lg:px-8 h-14 flex items-center justify-between">
-            <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => {
+                handleClearForm();
+                window.scrollTo({ top: 0, behavior: "smooth" });
+              }}
+              className="flex items-center gap-3 group text-left cursor-pointer transition active:scale-95 select-none"
+              title="Reset all filters & return to top"
+            >
               {/* Uncle Ji Hand-Drawn Shop Logo */}
-              <div className="relative group cursor-pointer">
+              <div className="relative">
                 <img
                   src="/logo.jpg"
                   alt="LungJi Logo"
-                  className="w-9 h-9 rounded-full object-cover border border-amber-400/50 ring-1 ring-white/10 shadow-sm transition-transform"
+                  className="w-9 h-9 rounded-full object-cover border border-amber-400/50 ring-1 ring-white/10 shadow-sm group-hover:scale-105 group-hover:border-amber-400 transition-all duration-200"
                 />
                 <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-emerald-500 border-2 border-[#0b0d14] rounded-full" title="Online & Ready" />
               </div>
               <div className="flex items-baseline gap-1.5">
-                <span className="text-base sm:text-lg font-bold tracking-tight text-white">
+                <span className="text-base sm:text-lg font-bold tracking-tight text-white group-hover:text-amber-200 transition-colors">
                   LungJi
                 </span>
-                <span className="text-xs sm:text-sm font-bold tracking-tight text-amber-400">
+                <span className="text-xs sm:text-sm font-bold tracking-tight text-amber-400 group-hover:text-amber-300 transition-colors">
                   Card Shop
                 </span>
               </div>
-            </div>
+            </button>
 
             {/* Top Right: Print Studio Button */}
             <div className="flex items-center gap-2">
