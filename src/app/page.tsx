@@ -104,6 +104,65 @@ export const SORT_FIELD_CONFIG: Record<
   },
 };
 
+export const COLOR_OPTIONS = [
+  {
+    code: "W",
+    label: "White",
+    short: "W",
+    activeClass: "bg-amber-100/20 text-amber-100 border-amber-200/40 ring-1 ring-amber-100/20",
+    inactiveClass: "text-amber-100/70 hover:text-amber-100 hover:bg-white/[0.03]",
+  },
+  {
+    code: "U",
+    label: "Blue",
+    short: "U",
+    activeClass: "bg-blue-500/20 text-blue-400 border-blue-400/40 ring-1 ring-blue-400/20",
+    inactiveClass: "text-blue-400/70 hover:text-blue-400 hover:bg-white/[0.03]",
+  },
+  {
+    code: "B",
+    label: "Black",
+    short: "B",
+    activeClass: "bg-purple-900/30 text-purple-300 border-purple-400/40 ring-1 ring-purple-400/20",
+    inactiveClass: "text-purple-300/70 hover:text-purple-300 hover:bg-white/[0.03]",
+  },
+  {
+    code: "R",
+    label: "Red",
+    short: "R",
+    activeClass: "bg-red-500/20 text-red-400 border-red-400/40 ring-1 ring-red-400/20",
+    inactiveClass: "text-red-400/70 hover:text-red-400 hover:bg-white/[0.03]",
+  },
+  {
+    code: "G",
+    label: "Green",
+    short: "G",
+    activeClass: "bg-emerald-500/20 text-emerald-400 border-emerald-400/40 ring-1 ring-emerald-400/20",
+    inactiveClass: "text-emerald-400/70 hover:text-emerald-400 hover:bg-white/[0.03]",
+  },
+  {
+    code: "M",
+    label: "Multicolor",
+    short: "M",
+    activeClass: "bg-amber-400/20 text-amber-300 border-amber-400/40 ring-1 ring-amber-400/20",
+    inactiveClass: "text-amber-400/70 hover:text-amber-300 hover:bg-white/[0.03]",
+  },
+  {
+    code: "C",
+    label: "Colorless",
+    short: "C",
+    activeClass: "bg-slate-500/20 text-slate-300 border-slate-400/40 ring-1 ring-slate-400/20",
+    inactiveClass: "text-slate-400/70 hover:text-slate-300 hover:bg-white/[0.03]",
+  },
+  {
+    code: "L",
+    label: "Land",
+    short: "L",
+    activeClass: "bg-stone-700/40 text-stone-200 border-stone-500/50 ring-1 ring-stone-400/20",
+    inactiveClass: "text-stone-400/70 hover:text-stone-300 hover:bg-white/[0.03]",
+  },
+];
+
 export function parseSortStringToItems(sortStr: string): ActiveSortItem[] {
   if (!sortStr) return [{ id: "price", direction: "desc" }];
   const parts = sortStr.split(",").map((s) => s.trim().toLowerCase()).filter(Boolean);
@@ -869,6 +928,7 @@ export default function HomePage() {
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [foilFilter, setFoilFilter] = useState<"all" | "foil" | "nonfoil">("all");
   const [selectedRarities, setSelectedRarities] = useState<string[]>([]);
+  const [selectedColors, setSelectedColors] = useState<string[]>([]);
   const [sortBy, setSortBy] = useState<string>("price_desc");
   const [rowsPerPage, setRowsPerPage] = useState<number>(24);
   const [currentPage, setCurrentPage] = useState<number>(1);
@@ -879,6 +939,14 @@ export default function HomePage() {
     setCurrentPage(1);
     setSelectedRarities((prev) =>
       prev.includes(r) ? prev.filter((item) => item !== r) : [...prev, r]
+    );
+  };
+
+  // Toggle multi-select color
+  const toggleColor = (c: string) => {
+    setCurrentPage(1);
+    setSelectedColors((prev) =>
+      prev.includes(c) ? prev.filter((item) => item !== c) : [...prev, c]
     );
   };
 
@@ -964,6 +1032,7 @@ export default function HomePage() {
     (selectedEdition !== "all" ? 1 : 0) +
     (foilFilter !== "all" ? 1 : 0) +
     selectedRarities.length +
+    selectedColors.length +
     (sliderMin > 0 || sliderMax < 100 ? 1 : 0);
 
   useEffect(() => {
@@ -1035,9 +1104,10 @@ export default function HomePage() {
   const fetchCards = useCallback(
     async () => {
       const rarityParam = selectedRarities.length === 0 ? "all" : selectedRarities.join(",");
+      const colorParam = selectedColors.length === 0 ? "all" : selectedColors.join(",");
       const minPriceQuery = debouncedMin > 0 ? String(debouncedMin) : "";
       const maxPriceQuery = debouncedMax < 100 ? String(debouncedMax) : "";
-      const cacheKey = `${selectedEdition}|${debouncedQuery}|${foilFilter}|${rarityParam}|${minPriceQuery}|${maxPriceQuery}|${sortBy}|${currentPage}|${rowsPerPage}`;
+      const cacheKey = `${selectedEdition}|${debouncedQuery}|${foilFilter}|${rarityParam}|${colorParam}|${minPriceQuery}|${maxPriceQuery}|${sortBy}|${currentPage}|${rowsPerPage}`;
 
       // Check cache first (0ms instant response)
       const cached = queryCacheRef.current.get(cacheKey);
@@ -1068,6 +1138,7 @@ export default function HomePage() {
           page: String(currentPage),
           limit: String(rowsPerPage),
         });
+        if (colorParam !== "all") params.set("color", colorParam);
         if (minPriceQuery) params.set("minPrice", minPriceQuery);
         if (maxPriceQuery) params.set("maxPrice", maxPriceQuery);
 
@@ -1105,7 +1176,7 @@ export default function HomePage() {
         }
       }
     },
-    [selectedEdition, debouncedQuery, foilFilter, selectedRarities, debouncedMin, debouncedMax, sortBy, currentPage, rowsPerPage]
+    [selectedEdition, debouncedQuery, foilFilter, selectedRarities, selectedColors, debouncedMin, debouncedMax, sortBy, currentPage, rowsPerPage]
   );
 
   useEffect(() => {
@@ -1119,9 +1190,10 @@ export default function HomePage() {
     const prefetchTimer = setTimeout(() => {
       const nextPage = currentPage + 1;
       const rarityParam = selectedRarities.length === 0 ? "all" : selectedRarities.join(",");
+      const colorParam = selectedColors.length === 0 ? "all" : selectedColors.join(",");
       const minPriceQuery = debouncedMin > 0 ? String(debouncedMin) : "";
       const maxPriceQuery = debouncedMax < 100 ? String(debouncedMax) : "";
-      const nextKey = `${selectedEdition}|${debouncedQuery}|${foilFilter}|${rarityParam}|${minPriceQuery}|${maxPriceQuery}|${sortBy}|${nextPage}|${rowsPerPage}`;
+      const nextKey = `${selectedEdition}|${debouncedQuery}|${foilFilter}|${rarityParam}|${colorParam}|${minPriceQuery}|${maxPriceQuery}|${sortBy}|${nextPage}|${rowsPerPage}`;
 
       if (!queryCacheRef.current.has(nextKey)) {
         const params = new URLSearchParams({
@@ -1133,6 +1205,7 @@ export default function HomePage() {
           page: String(nextPage),
           limit: String(rowsPerPage),
         });
+        if (colorParam !== "all") params.set("color", colorParam);
         if (minPriceQuery) params.set("minPrice", minPriceQuery);
         if (maxPriceQuery) params.set("maxPrice", maxPriceQuery);
 
@@ -1154,7 +1227,7 @@ export default function HomePage() {
     }, 1500);
 
     return () => clearTimeout(prefetchTimer);
-  }, [currentPage, totalPages, isLoading, cards.length, selectedEdition, debouncedQuery, foilFilter, selectedRarities, debouncedMin, debouncedMax, sortBy, rowsPerPage]);
+  }, [currentPage, totalPages, isLoading, cards.length, selectedEdition, debouncedQuery, foilFilter, selectedRarities, selectedColors, debouncedMin, debouncedMax, sortBy, rowsPerPage]);
 
   // Auto-sync data in the background every 30 minutes
   useEffect(() => {
@@ -1171,6 +1244,7 @@ export default function HomePage() {
     setSelectedEdition("all");
     setFoilFilter("all");
     setSelectedRarities([]);
+    setSelectedColors([]);
     setSliderMin(0);
     setSliderMax(100);
     setDebouncedMin(0);
@@ -1225,6 +1299,7 @@ export default function HomePage() {
     debouncedQuery,
     foilFilter,
     selectedRarities,
+    selectedColors,
     debouncedMin,
     debouncedMax,
     sortBy,
@@ -1349,7 +1424,7 @@ export default function HomePage() {
                   <Filter className="w-3.5 h-3.5 text-amber-400" />
                   <span>Filters</span>
                 </div>
-                {(searchQuery || selectedEdition !== "all" || foilFilter !== "all" || selectedRarities.length > 0 || sliderMin > 0 || sliderMax < 100) && (
+                {(searchQuery || selectedEdition !== "all" || foilFilter !== "all" || selectedRarities.length > 0 || selectedColors.length > 0 || sliderMin > 0 || sliderMax < 100) && (
                   <button
                     onClick={handleClearForm}
                     className="text-[10px] font-medium text-slate-400 hover:text-amber-400 transition"
@@ -1404,10 +1479,10 @@ export default function HomePage() {
                         setSelectedRarities([]);
                         setCurrentPage(1);
                       }}
-                      className="text-[10px] text-slate-400 hover:text-amber-400 transition"
+                      className="text-[10px] text-slate-400 hover:text-amber-400 transition cursor-pointer"
                       title="Reset rarity"
                     >
-                      Reset
+                      Reset ({selectedRarities.length})
                     </button>
                   )}
                 </div>
@@ -1418,7 +1493,7 @@ export default function HomePage() {
                       setSelectedRarities([]);
                       setCurrentPage(1);
                     }}
-                    className={`py-1.5 text-xs font-medium rounded-md transition ${
+                    className={`py-1.5 text-xs font-medium rounded-md transition cursor-pointer ${
                       selectedRarities.length === 0
                         ? "bg-white/[0.08] text-white font-semibold border border-white/[0.08]"
                         : "text-slate-400 hover:text-slate-200"
@@ -1430,7 +1505,7 @@ export default function HomePage() {
                   <button
                     type="button"
                     onClick={() => toggleRarity("mythic")}
-                    className={`py-1.5 text-xs font-bold rounded-md transition ${
+                    className={`py-1.5 text-xs font-bold rounded-md transition cursor-pointer ${
                       selectedRarities.includes("mythic")
                         ? "bg-[#c2410c]/20 text-[#fb923c] border border-[#c2410c]/40 ring-1 ring-[#c2410c]/20"
                         : "text-[#fb923c]/70 hover:text-[#fb923c] hover:bg-white/[0.03]"
@@ -1442,7 +1517,7 @@ export default function HomePage() {
                   <button
                     type="button"
                     onClick={() => toggleRarity("rare")}
-                    className={`py-1.5 text-xs font-bold rounded-md transition ${
+                    className={`py-1.5 text-xs font-bold rounded-md transition cursor-pointer ${
                       selectedRarities.includes("rare")
                         ? "bg-amber-400/20 text-amber-300 border border-amber-400/40 ring-1 ring-amber-400/20"
                         : "text-amber-400/70 hover:text-amber-300 hover:bg-white/[0.03]"
@@ -1454,7 +1529,7 @@ export default function HomePage() {
                   <button
                     type="button"
                     onClick={() => toggleRarity("uncommon")}
-                    className={`py-1.5 text-xs font-bold rounded-md transition ${
+                    className={`py-1.5 text-xs font-bold rounded-md transition cursor-pointer ${
                       selectedRarities.includes("uncommon")
                         ? "bg-slate-300/15 text-slate-200 border border-slate-300/30 ring-1 ring-white/10"
                         : "text-slate-400 hover:text-slate-200 hover:bg-white/[0.03]"
@@ -1466,7 +1541,7 @@ export default function HomePage() {
                   <button
                     type="button"
                     onClick={() => toggleRarity("common")}
-                    className={`py-1.5 text-xs font-bold rounded-md transition ${
+                    className={`py-1.5 text-xs font-bold rounded-md transition cursor-pointer ${
                       selectedRarities.includes("common")
                         ? "bg-slate-700/40 text-slate-300 border border-slate-600/50"
                         : "text-slate-500 hover:text-slate-300 hover:bg-white/[0.03]"
@@ -1475,6 +1550,58 @@ export default function HomePage() {
                   >
                     C
                   </button>
+                </div>
+              </div>
+
+              {/* Color Filter (Multi-select) */}
+              <div className="space-y-1.5 border-b border-white/[0.06] pb-3.5">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-semibold text-slate-200">Color</label>
+                  {selectedColors.length > 0 && (
+                    <button
+                      onClick={() => {
+                        setSelectedColors([]);
+                        setCurrentPage(1);
+                      }}
+                      className="text-[10px] text-slate-400 hover:text-amber-400 transition cursor-pointer"
+                      title="Reset color"
+                    >
+                      Reset ({selectedColors.length})
+                    </button>
+                  )}
+                </div>
+                <div className="grid grid-cols-9 gap-0.5 sm:gap-1 bg-[#0b0d14] p-1 rounded-lg border border-white/[0.06]">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedColors([]);
+                      setCurrentPage(1);
+                    }}
+                    className={`py-1.5 text-[11px] sm:text-xs font-medium rounded-md transition text-center cursor-pointer ${
+                      selectedColors.length === 0
+                        ? "bg-white/[0.08] text-white font-semibold border border-white/[0.08]"
+                        : "text-slate-400 hover:text-slate-200"
+                    }`}
+                    title="All Colors"
+                  >
+                    All
+                  </button>
+                  {COLOR_OPTIONS.map((c) => {
+                    const isSelected = selectedColors.includes(c.code);
+                    return (
+                      <button
+                        key={c.code}
+                        type="button"
+                        onClick={() => toggleColor(c.code)}
+                        className={`py-1.5 text-xs font-bold rounded-md transition text-center cursor-pointer ${
+                          isSelected ? c.activeClass : c.inactiveClass
+                        }`}
+                        title={`${c.label} (${c.code})`}
+                      >
+                        {c.short}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 
@@ -1651,6 +1778,38 @@ export default function HomePage() {
                         <X className="w-3 h-3 opacity-60 group-hover:opacity-100 shrink-0" />
                       </button>
                     ))}
+                  {selectedColors.length > 0 &&
+                    selectedColors.map((c) => {
+                      const opt = COLOR_OPTIONS.find((o) => o.code === c);
+                      return (
+                        <button
+                          key={c}
+                          type="button"
+                          onClick={() => toggleColor(c)}
+                          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md border text-[11px] font-semibold transition group cursor-pointer ${
+                            c === "W"
+                              ? "bg-amber-100/15 text-amber-100 border-amber-200/30"
+                              : c === "U"
+                              ? "bg-blue-500/15 text-blue-400 border-blue-400/30"
+                              : c === "B"
+                              ? "bg-purple-900/30 text-purple-300 border-purple-400/30"
+                              : c === "R"
+                              ? "bg-red-500/15 text-red-400 border-red-400/30"
+                              : c === "G"
+                              ? "bg-emerald-500/15 text-emerald-400 border-emerald-400/30"
+                              : c === "M"
+                              ? "bg-amber-400/15 text-amber-300 border-amber-400/30"
+                              : c === "C"
+                              ? "bg-slate-500/15 text-slate-300 border-slate-400/30"
+                              : "bg-stone-700/30 text-stone-200 border-stone-500/40"
+                          }`}
+                          title={`Clear ${opt?.label || c} filter`}
+                        >
+                          <span>{opt?.label || c}</span>
+                          <X className="w-3 h-3 opacity-60 group-hover:opacity-100 shrink-0" />
+                        </button>
+                      );
+                    })}
                   {(sliderMin > 0 || sliderMax < 100) && (
                     <button
                       type="button"

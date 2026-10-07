@@ -51,6 +51,7 @@ export interface SearchParams {
   search?: string;
   foil?: "all" | "foil" | "nonfoil";
   rarity?: string;
+  color?: string;
   inStock?: boolean;
   minPrice?: number;
   maxPrice?: number;
@@ -223,6 +224,7 @@ export async function searchCards(params: SearchParams) {
     search,
     foil = "all",
     rarity = "all",
+    color = "all",
     inStock = false,
     minPrice,
     maxPrice,
@@ -252,6 +254,14 @@ export async function searchCards(params: SearchParams) {
     if (rList.length > 0 && !rList.includes("all")) {
       where.push(`rarity IN (${rList.map(() => "?").join(",")})`);
       binds.push(...rList);
+    }
+  }
+
+  if (color && color !== "all") {
+    const cList = color.split(",").map((c) => c.trim().toUpperCase()).filter(Boolean);
+    if (cList.length > 0 && !cList.includes("ALL")) {
+      where.push(`color IN (${cList.map(() => "?").join(",")})`);
+      binds.push(...cList);
     }
   }
 
