@@ -83,17 +83,21 @@ function SearchableEditionSelect({
     };
   }, [isOpen]);
 
-  // Filtered list based on search term
-  const filteredEditions = editions.filter((ed) =>
-    ed.name.toLowerCase().includes(searchTerm.toLowerCase().trim())
-  );
+  // Filtered list based on search term (supports both set name and set code like "clb", "mh3", "blb")
+  const term = searchTerm.toLowerCase().trim();
+  const filteredEditions = editions.filter((ed) => {
+    if (!term) return true;
+    const matchName = ed.name.toLowerCase().includes(term);
+    const matchCode = ed.code ? ed.code.toLowerCase().includes(term) : false;
+    return matchName || matchCode;
+  });
 
   const currentEditionObj = editions.find((e) => e.name === selectedEdition);
   const displayLabel =
     selectedEdition === "all"
       ? `All Editions (${editions.length})`
       : currentEditionObj
-      ? `${currentEditionObj.name} (${currentEditionObj.count})`
+      ? `${currentEditionObj.code ? `[${currentEditionObj.code}] ` : ""}${currentEditionObj.name} (${currentEditionObj.count})`
       : selectedEdition;
 
   return (
@@ -137,7 +141,7 @@ function SearchableEditionSelect({
             <Search className="w-3.5 h-3.5 text-amber-400/80 absolute left-2.5 top-1/2 -translate-y-1/2" />
             <input
               type="text"
-              placeholder="Search set name..."
+              placeholder="Search set name or code (e.g. CLB, MH3)..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               autoFocus
@@ -158,7 +162,7 @@ function SearchableEditionSelect({
           {/* List of sets */}
           <div className="max-h-72 overflow-y-auto space-y-0.5 pr-1">
             {/* All Editions option */}
-            {(!searchTerm || "all editions".includes(searchTerm.toLowerCase())) && (
+            {(!term || "all editions".includes(term)) && (
               <button
                 type="button"
                 title={`All Editions (${editions.length} sets)`}
@@ -190,22 +194,29 @@ function SearchableEditionSelect({
               <button
                 key={ed.name}
                 type="button"
-                title={`${ed.name} (${ed.count.toLocaleString()} cards)`}
+                title={`${ed.name}${ed.code ? ` [${ed.code}]` : ""} (${ed.count.toLocaleString()} cards)`}
                 onClick={() => {
                   onChange(ed.name);
                   setIsOpen(false);
                   setSearchTerm("");
                 }}
-                className={`w-full flex items-start justify-between gap-2 px-2.5 py-2 rounded-lg text-xs transition text-left group ${
+                className={`w-full flex items-center justify-between gap-2 px-2.5 py-2 rounded-lg text-xs transition text-left group ${
                   selectedEdition === ed.name
                     ? "bg-amber-400/10 text-amber-300 font-semibold border border-amber-400/30"
                     : "text-slate-300 hover:bg-white/[0.05] hover:text-white"
                 }`}
               >
-                <span className="leading-snug break-words text-slate-200 group-hover:text-white flex-1">
-                  {ed.name}
-                </span>
-                <span className="text-[10px] text-slate-400 shrink-0 font-mono tabular-nums px-1.5 py-0.5 rounded bg-white/[0.04] mt-0.5">
+                <div className="flex items-center gap-1.5 flex-1 min-w-0 pr-1">
+                  {ed.code && (
+                    <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-amber-400/15 text-amber-300 border border-amber-400/25 shrink-0 uppercase tracking-wider">
+                      {ed.code}
+                    </span>
+                  )}
+                  <span className="leading-snug break-words text-slate-200 group-hover:text-white truncate">
+                    {ed.name}
+                  </span>
+                </div>
+                <span className="text-[10px] text-slate-400 shrink-0 font-mono tabular-nums px-1.5 py-0.5 rounded bg-white/[0.04]">
                   {ed.count.toLocaleString()}
                 </span>
               </button>

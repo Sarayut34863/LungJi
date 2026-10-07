@@ -32,8 +32,13 @@ export interface CKCard {
   condition_values?: CardConditionValues;
 }
 
+import editionCodesData from "@/data/edition-codes.json";
+
+const editionCodes = editionCodesData as Record<string, string>;
+
 export interface EditionSummary {
   name: string;
+  code?: string;
   count: number;
   isPopular?: boolean;
 }
@@ -165,6 +170,7 @@ export async function getEditions() {
   const allEditions: EditionSummary[] = rows
     .map((r) => ({
       name: r.edition,
+      code: editionCodes[r.edition] || undefined,
       count: r.count,
       isPopular: POPULAR_SET_NAMES.includes(r.edition),
     }))
@@ -226,8 +232,16 @@ export async function searchCards(params: SearchParams) {
   const binds: (string | number)[] = [];
 
   if (edition && edition !== "all") {
+    let targetEdition = edition.trim();
+    const upper = targetEdition.toUpperCase();
+    for (const [name, code] of Object.entries(editionCodes)) {
+      if (code === upper || name.toLowerCase() === targetEdition.toLowerCase()) {
+        targetEdition = name;
+        break;
+      }
+    }
     where.push("edition = ?");
-    binds.push(edition);
+    binds.push(targetEdition);
   }
 
   if (rarity && rarity !== "all") {
