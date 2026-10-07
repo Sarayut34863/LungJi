@@ -30,6 +30,7 @@ import {
   ChevronUp,
   ArrowUp,
   ArrowDown,
+  Menu,
 } from "lucide-react";
 import { CKCard, EditionSummary } from "@/lib/cardkingdom";
 
@@ -234,6 +235,32 @@ export function DynamicMultiSortControl({
     onChange(itemsToSortString(newItems));
   };
 
+  const [draggedIdx, setDraggedIdx] = useState<number | null>(null);
+
+  const handleDragStart = (e: React.DragEvent, index: number) => {
+    setDraggedIdx(index);
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("text/plain", String(index));
+  };
+
+  const handleDragOver = (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+  };
+
+  const handleDrop = (e: React.DragEvent, dropIdx: number) => {
+    e.preventDefault();
+    if (draggedIdx === null || draggedIdx === dropIdx) {
+      setDraggedIdx(null);
+      return;
+    }
+    const copy = [...activeItems];
+    const [moved] = copy.splice(draggedIdx, 1);
+    copy.splice(dropIdx, 0, moved);
+    setDraggedIdx(null);
+    onChange(itemsToSortString(copy));
+  };
+
   const handleMoveItem = (index: number, direction: -1 | 1) => {
     const targetIndex = index + direction;
     if (targetIndex < 0 || targetIndex >= activeItems.length) return;
@@ -276,82 +303,113 @@ export function DynamicMultiSortControl({
         </button>
       </div>
 
-      {/* Active Sort Chain Display */}
+      {/* Active Sort Rows with Hamburger (☰) Reorder Handle */}
       {isSelectionOrder ? (
-        <div className="p-2 rounded-xl bg-[#090b12] border border-white/[0.08] text-xs text-slate-400 flex items-center justify-between">
+        <div className="p-2.5 rounded-xl bg-[#090b12] border border-white/[0.08] text-xs text-slate-400 flex items-center justify-between">
           <span className="font-medium text-slate-300">As Added (Selection Order)</span>
           <span className="text-[10px] text-slate-500 font-mono">Original</span>
         </div>
       ) : (
         <div className="space-y-1.5 p-2 rounded-xl bg-[#090b12] border border-white/[0.08]">
-          <div className="text-[10px] uppercase font-bold tracking-wider text-slate-500 flex items-center justify-between">
-            <span>Active Sort Chain</span>
-            <span className="text-slate-600 font-mono">1st → 2nd → 3rd</span>
+          <div className="text-[10px] uppercase font-bold tracking-wider text-slate-400 flex items-center justify-between px-0.5">
+            <span className="flex items-center gap-1.5">
+              <Menu className="w-3.5 h-3.5 text-amber-400" />
+              <span>Priority Order (Drag ☰)</span>
+            </span>
+            <span className="text-slate-500 font-mono text-[9px]">1st → 2nd</span>
           </div>
 
-          <div className="flex items-center gap-1.5 flex-wrap">
+          <div className="space-y-1.5">
             {activeItems.map((item, idx) => {
               const config = SORT_FIELD_CONFIG[item.id];
               return (
                 <div
                   key={item.id}
-                  className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-amber-400/15 border border-amber-400/40 text-amber-300 text-xs font-semibold shadow-sm"
+                  draggable={activeItems.length > 1}
+                  onDragStart={(e) => handleDragStart(e, idx)}
+                  onDragOver={(e) => handleDragOver(e, idx)}
+                  onDrop={(e) => handleDrop(e, idx)}
+                  onDragEnd={() => setDraggedIdx(null)}
+                  className={`flex items-center justify-between p-1.5 rounded-xl bg-[#131622] border transition select-none ${
+                    draggedIdx === idx
+                      ? "opacity-40 border-dashed border-amber-400"
+                      : "border-amber-400/35 hover:border-amber-400/60 shadow-sm"
+                  }`}
                 >
-                  <span className="w-4 h-4 rounded-full bg-amber-400 text-slate-950 text-[10px] font-bold flex items-center justify-center font-mono shrink-0">
-                    {idx + 1}
-                  </span>
-                  <span className="text-slate-100">{config.shortLabel}:</span>
-
-                  {/* Toggle Direction Pill */}
-                  <button
-                    type="button"
-                    onClick={() => handleToggleItemDirection(item.id)}
-                    className="flex items-center gap-0.5 text-amber-300 hover:text-white bg-amber-400/20 hover:bg-amber-400/30 px-1.5 py-0.5 rounded transition cursor-pointer text-[10px] font-mono font-medium"
-                    title="Click to toggle order direction"
-                  >
-                    <span>{item.direction === "asc" ? config.ascLabel : config.descLabel}</span>
-                    {item.direction === "asc" ? (
-                      <ArrowUp className="w-2.5 h-2.5" />
-                    ) : (
-                      <ArrowDown className="w-2.5 h-2.5" />
-                    )}
-                  </button>
-
-                  {/* Move Left / Right if multi */}
-                  {activeItems.length > 1 && (
-                    <div className="flex items-center gap-0.5 ml-0.5 border-l border-amber-400/30 pl-1">
-                      {idx > 0 && (
-                        <button
-                          type="button"
-                          onClick={() => handleMoveItem(idx, -1)}
-                          className="hover:text-white p-0.5 text-slate-400 text-[10px] leading-none"
-                          title="Move priority left"
-                        >
-                          ◀
-                        </button>
-                      )}
-                      {idx < activeItems.length - 1 && (
-                        <button
-                          type="button"
-                          onClick={() => handleMoveItem(idx, 1)}
-                          className="hover:text-white p-0.5 text-slate-400 text-[10px] leading-none"
-                          title="Move priority right"
-                        >
-                          ▶
-                        </button>
-                      )}
+                  {/* Left: Hamburger Drag Handle + Priority Circle + Field Label */}
+                  <div className="flex items-center gap-2 min-w-0">
+                    {/* Hamburger Drag Handle */}
+                    <div
+                      className={`p-1 rounded text-amber-400 hover:text-amber-300 hover:bg-white/[0.06] transition flex items-center justify-center ${
+                        activeItems.length > 1 ? "cursor-grab active:cursor-grabbing" : "opacity-40 cursor-default"
+                      }`}
+                      title={activeItems.length > 1 ? "Drag ☰ to reorder priority" : "Sort priority handle"}
+                    >
+                      <Menu className="w-3.5 h-3.5" />
                     </div>
-                  )}
 
-                  {/* Remove / Reset single criterion */}
-                  <button
-                    type="button"
-                    onClick={() => handleRemoveItem(item.id)}
-                    className="text-amber-400/70 hover:text-rose-400 p-0.5 rounded transition cursor-pointer ml-0.5"
-                    title={`Remove ${config.label} from sort`}
-                  >
-                    <X className="w-3 h-3" />
-                  </button>
+                    <span className="w-4 h-4 rounded-full bg-amber-400 text-slate-950 text-[10px] font-bold flex items-center justify-center font-mono shrink-0">
+                      {idx + 1}
+                    </span>
+
+                    <span className="font-semibold text-slate-100 truncate text-xs">
+                      {config.shortLabel}
+                    </span>
+                  </div>
+
+                  {/* Right: Direction Toggle Pill + Up/Down + Remove (x) */}
+                  <div className="flex items-center gap-1 shrink-0">
+                    {/* Direction Toggle Pill */}
+                    <button
+                      type="button"
+                      onClick={() => handleToggleItemDirection(item.id)}
+                      className="flex items-center gap-1 text-amber-300 hover:text-white bg-amber-400/20 hover:bg-amber-400/30 px-2 py-0.5 rounded-md transition cursor-pointer text-[10px] font-mono font-medium"
+                      title="Click to toggle order direction"
+                    >
+                      <span>{item.direction === "asc" ? config.ascLabel : config.descLabel}</span>
+                      {item.direction === "asc" ? (
+                        <ArrowUp className="w-2.5 h-2.5 text-amber-400" />
+                      ) : (
+                        <ArrowDown className="w-2.5 h-2.5 text-amber-400" />
+                      )}
+                    </button>
+
+                    {/* Move Up / Down Buttons */}
+                    {activeItems.length > 1 && (
+                      <div className="flex items-center text-slate-400">
+                        {idx > 0 && (
+                          <button
+                            type="button"
+                            onClick={() => handleMoveItem(idx, -1)}
+                            className="p-1 hover:text-white hover:bg-white/10 rounded transition text-xs cursor-pointer"
+                            title="Move up"
+                          >
+                            <ChevronUp className="w-3 h-3" />
+                          </button>
+                        )}
+                        {idx < activeItems.length - 1 && (
+                          <button
+                            type="button"
+                            onClick={() => handleMoveItem(idx, 1)}
+                            className="p-1 hover:text-white hover:bg-white/10 rounded transition text-xs cursor-pointer"
+                            title="Move down"
+                          >
+                            <ChevronDown className="w-3 h-3" />
+                          </button>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Remove / Reset Single Criterion */}
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveItem(item.id)}
+                      className="text-slate-400 hover:text-rose-400 p-1 rounded hover:bg-rose-500/10 transition cursor-pointer"
+                      title={`Remove ${config.label} from sort`}
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
                 </div>
               );
             })}
@@ -359,7 +417,7 @@ export function DynamicMultiSortControl({
         </div>
       )}
 
-      {/* Clickable Quick Buttons for 4 Fields */}
+      {/* Clickable Quick Buttons for 4 Fields (Stacked 2-row layout with ZERO text overlap) */}
       <div className="grid grid-cols-2 gap-1.5 pt-0.5">
         {(["color", "price", "number", "name"] as const).map((fieldId) => {
           const config = SORT_FIELD_CONFIG[fieldId];
@@ -372,18 +430,22 @@ export function DynamicMultiSortControl({
               key={fieldId}
               type="button"
               onClick={() => handleToggleField(fieldId)}
-              className={`flex items-center justify-between p-2 rounded-xl border text-xs text-left transition active:scale-[0.98] cursor-pointer ${
+              className={`flex flex-col justify-between p-2 rounded-xl border text-xs text-left transition active:scale-[0.98] cursor-pointer ${
                 isActive
                   ? "bg-amber-400/15 border-amber-400/50 text-amber-300 font-semibold shadow-sm shadow-amber-500/10"
                   : "bg-[#0b0d14] border-white/[0.08] text-slate-400 hover:text-slate-200 hover:border-white/[0.18]"
               }`}
               title={
                 isActive
-                  ? `Priority #${activeIndex + 1}: ${config.label} (${currentItem?.direction === "asc" ? config.ascLabel : config.descLabel}). Click to change direction or remove.`
+                  ? `Priority #${activeIndex + 1}: ${config.label} (${currentItem?.direction === "asc" ? config.ascLabel : config.descLabel}). Click to change order or remove.`
                   : `Click to add ${config.label} to sort priority`
               }
             >
-              <div className="flex items-center gap-1.5 min-w-0">
+              {/* Row 1: Field Name + Priority Circle / Plus */}
+              <div className="flex items-center justify-between w-full">
+                <span className="font-semibold text-xs text-slate-100 truncate">
+                  {config.shortLabel}
+                </span>
                 {isActive ? (
                   <span className="w-4 h-4 rounded-full bg-amber-400 text-slate-950 text-[10px] font-bold flex items-center justify-center shrink-0 font-mono">
                     {activeIndex + 1}
@@ -391,20 +453,25 @@ export function DynamicMultiSortControl({
                 ) : (
                   <Plus className="w-3.5 h-3.5 text-slate-500 shrink-0" />
                 )}
-                <span className="truncate">{config.shortLabel}</span>
               </div>
-              <div className="flex items-center gap-0.5 text-[10px] opacity-85 shrink-0 font-mono">
-                {isActive ? (
-                  <>
-                    <span>{currentItem?.direction === "asc" ? config.ascLabel : config.descLabel}</span>
-                    {currentItem?.direction === "asc" ? (
-                      <ArrowUp className="w-2.5 h-2.5 text-amber-400" />
-                    ) : (
-                      <ArrowDown className="w-2.5 h-2.5 text-amber-400" />
-                    )}
-                  </>
-                ) : (
-                  <span className="text-slate-500">{config.defaultDir === "asc" ? config.ascLabel : config.descLabel}</span>
+
+              {/* Row 2: Status / Direction */}
+              <div className="flex items-center justify-between w-full mt-1.5 text-[10px] font-mono">
+                <span className={isActive ? "text-amber-300 font-medium truncate" : "text-slate-500 truncate"}>
+                  {isActive
+                    ? currentItem?.direction === "asc"
+                      ? config.ascLabel
+                      : config.descLabel
+                    : config.defaultDir === "asc"
+                    ? config.ascLabel
+                    : config.descLabel}
+                </span>
+                {isActive && (
+                  currentItem?.direction === "asc" ? (
+                    <ArrowUp className="w-3 h-3 text-amber-400 shrink-0 ml-1" />
+                  ) : (
+                    <ArrowDown className="w-3 h-3 text-amber-400 shrink-0 ml-1" />
+                  )
                 )}
               </div>
             </button>
