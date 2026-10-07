@@ -2573,17 +2573,11 @@ function ArchidektCardItem({
             <>
               <Check className="w-3 h-3 text-amber-400 stroke-[2.5] shrink-0" />
               <span className="font-mono font-bold">{quantity}x</span>
-              <span className="text-[10px] text-amber-300/80 font-mono">
-                ฿{formatThbPrice(nmPrice * quantity, thbMultiplier)}
-              </span>
             </>
           ) : (
-            <>
-              <Plus className="w-3 h-3 text-slate-400 group-hover:text-amber-400 shrink-0" />
-              <span className="font-mono font-bold text-slate-300 group-hover:text-amber-300">
-                ฿{formatThbPrice(nmPrice, thbMultiplier)}
-              </span>
-            </>
+            <span className="font-mono font-bold text-slate-300 group-hover:text-amber-300">
+              ฿{formatThbPrice(nmPrice, thbMultiplier)}
+            </span>
           )}
         </button>
       </div>
