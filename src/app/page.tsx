@@ -1811,25 +1811,6 @@ export default function HomePage() {
                     THB / $
                   </span>
                 </div>
-
-                {/* Fast Preset Buttons */}
-                <div className="grid grid-cols-5 gap-1">
-                  {[33, 34, 35, 36, 38].map((preset) => (
-                    <button
-                      key={preset}
-                      type="button"
-                      onClick={() => handleSetThbMultiplier(preset)}
-                      className={`py-1 text-[11px] font-mono font-medium rounded-md border transition cursor-pointer text-center ${
-                        thbMultiplier === preset
-                          ? "bg-amber-400/20 text-amber-300 border-amber-400/40 font-bold"
-                          : "bg-[#0b0d14] text-slate-400 border-white/[0.06] hover:text-slate-200 hover:border-white/[0.15]"
-                      }`}
-                      title={`Multiply USD price by ${preset} THB`}
-                    >
-                      ×{preset}
-                    </button>
-                  ))}
-                </div>
               </div>
 
               {/* Dynamic Multi-Sort Order */}
