@@ -1534,27 +1534,15 @@ export default function HomePage() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => toggleRarity("mythic")}
+                    onClick={() => toggleRarity("common")}
                     className={`py-1.5 text-xs font-bold rounded-md transition cursor-pointer ${
-                      selectedRarities.includes("mythic")
-                        ? "bg-[#c2410c]/20 text-[#fb923c] border border-[#c2410c]/40 ring-1 ring-[#c2410c]/20"
-                        : "text-[#fb923c]/70 hover:text-[#fb923c] hover:bg-white/[0.03]"
+                      selectedRarities.includes("common")
+                        ? "bg-slate-700/40 text-slate-300 border border-slate-600/50"
+                        : "text-slate-500 hover:text-slate-300 hover:bg-white/[0.03]"
                     }`}
-                    title="Mythic Rare"
+                    title="Common"
                   >
-                    M
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => toggleRarity("rare")}
-                    className={`py-1.5 text-xs font-bold rounded-md transition cursor-pointer ${
-                      selectedRarities.includes("rare")
-                        ? "bg-amber-400/20 text-amber-300 border border-amber-400/40 ring-1 ring-amber-400/20"
-                        : "text-amber-400/70 hover:text-amber-300 hover:bg-white/[0.03]"
-                    }`}
-                    title="Rare"
-                  >
-                    R
+                    C
                   </button>
                   <button
                     type="button"
@@ -1570,15 +1558,27 @@ export default function HomePage() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => toggleRarity("common")}
+                    onClick={() => toggleRarity("rare")}
                     className={`py-1.5 text-xs font-bold rounded-md transition cursor-pointer ${
-                      selectedRarities.includes("common")
-                        ? "bg-slate-700/40 text-slate-300 border border-slate-600/50"
-                        : "text-slate-500 hover:text-slate-300 hover:bg-white/[0.03]"
+                      selectedRarities.includes("rare")
+                        ? "bg-amber-400/20 text-amber-300 border border-amber-400/40 ring-1 ring-amber-400/20"
+                        : "text-amber-400/70 hover:text-amber-300 hover:bg-white/[0.03]"
                     }`}
-                    title="Common"
+                    title="Rare"
                   >
-                    C
+                    R
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => toggleRarity("mythic")}
+                    className={`py-1.5 text-xs font-bold rounded-md transition cursor-pointer ${
+                      selectedRarities.includes("mythic")
+                        ? "bg-[#c2410c]/20 text-[#fb923c] border border-[#c2410c]/40 ring-1 ring-[#c2410c]/20"
+                        : "text-[#fb923c]/70 hover:text-[#fb923c] hover:bg-white/[0.03]"
+                    }`}
+                    title="Mythic Rare"
+                  >
+                    M
                   </button>
                 </div>
               </div>
