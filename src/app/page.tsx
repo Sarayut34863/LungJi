@@ -57,6 +57,16 @@ function formatPrice(num: number): string {
   });
 }
 
+// Helper function to format Thai Baht price with multiplier
+function formatThbPrice(usd: number, multiplier: number = 35): string {
+  const rate = typeof multiplier === "number" && !isNaN(multiplier) && multiplier > 0 ? multiplier : 35;
+  const thb = (usd || 0) * rate;
+  return thb.toLocaleString("en-US", {
+    minimumFractionDigits: Number.isInteger(thb) ? 0 : 2,
+    maximumFractionDigits: 2,
+  });
+}
+
 export type SortFieldId = "color" | "price" | "number" | "name";
 
 export interface ActiveSortItem {
@@ -952,6 +962,42 @@ export default function HomePage() {
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [mobileFilterOpen, setMobileFilterOpen] = useState<boolean>(false);
 
+  // THB Currency Multiplier state (defaults to 35 THB/$, user-customizable)
+  const [thbMultiplier, setThbMultiplier] = useState<number>(35);
+  const [thbMultiplierInput, setThbMultiplierInput] = useState<string>("35");
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("lungji_thb_multiplier");
+      if (saved) {
+        const parsed = parseFloat(saved);
+        if (!isNaN(parsed) && parsed > 0) {
+          setThbMultiplier(parsed);
+          setThbMultiplierInput(String(parsed));
+        }
+      }
+    } catch {}
+  }, []);
+
+  const handleSetThbMultiplier = (val: number) => {
+    setThbMultiplier(val);
+    setThbMultiplierInput(String(val));
+    try {
+      localStorage.setItem("lungji_thb_multiplier", String(val));
+    } catch {}
+  };
+
+  const handleInputChangeThbMultiplier = (raw: string) => {
+    setThbMultiplierInput(raw);
+    const parsed = parseFloat(raw);
+    if (!isNaN(parsed) && parsed > 0) {
+      setThbMultiplier(parsed);
+      try {
+        localStorage.setItem("lungji_thb_multiplier", String(parsed));
+      } catch {}
+    }
+  };
+
   // Toggle multi-select rarity
   const toggleRarity = (r: string) => {
     setCurrentPage(1);
@@ -1727,6 +1773,65 @@ export default function HomePage() {
                 }}
               />
 
+              {/* THB Currency Multiplier (ตัวคูณเงินไทย) */}
+              <div className="space-y-2 border-b border-white/[0.06] pb-3.5">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5">
+                    <label className="text-xs font-semibold text-slate-200">THB Multiplier</label>
+                    <span className="text-[10px] text-amber-400 font-mono font-medium">(ตัวคูณ)</span>
+                  </div>
+                  {thbMultiplier !== 35 && (
+                    <button
+                      type="button"
+                      onClick={() => handleSetThbMultiplier(35)}
+                      className="text-[10px] text-slate-400 hover:text-amber-400 transition cursor-pointer"
+                      title="Reset to 35"
+                    >
+                      Reset (35)
+                    </button>
+                  )}
+                </div>
+
+                {/* Input box */}
+                <div className="relative">
+                  <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs font-mono font-bold text-amber-400">
+                    ฿
+                  </span>
+                  <input
+                    type="number"
+                    step="0.1"
+                    min="1"
+                    max="1000"
+                    value={thbMultiplierInput}
+                    onChange={(e) => handleInputChangeThbMultiplier(e.target.value)}
+                    placeholder="35"
+                    className="w-full bg-[#0b0d14] border border-white/[0.08] rounded-lg pl-7 pr-12 py-1.5 text-xs text-slate-100 font-mono font-semibold placeholder:text-slate-500 outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-400/25 transition"
+                  />
+                  <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] font-mono text-slate-400">
+                    THB / $
+                  </span>
+                </div>
+
+                {/* Fast Preset Buttons */}
+                <div className="grid grid-cols-5 gap-1">
+                  {[33, 34, 35, 36, 38].map((preset) => (
+                    <button
+                      key={preset}
+                      type="button"
+                      onClick={() => handleSetThbMultiplier(preset)}
+                      className={`py-1 text-[11px] font-mono font-medium rounded-md border transition cursor-pointer text-center ${
+                        thbMultiplier === preset
+                          ? "bg-amber-400/20 text-amber-300 border-amber-400/40 font-bold"
+                          : "bg-[#0b0d14] text-slate-400 border-white/[0.06] hover:text-slate-200 hover:border-white/[0.15]"
+                      }`}
+                      title={`Multiply USD price by ${preset} THB`}
+                    >
+                      ×{preset}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               {/* Dynamic Multi-Sort Order */}
               <div className="border-b border-white/[0.06] pb-3.5">
                 <DynamicMultiSortControl
@@ -1984,6 +2089,7 @@ export default function HomePage() {
                           index={index}
                           isSelected={isSelected}
                           quantity={quantity}
+                          thbMultiplier={thbMultiplier}
                           onToggleSelect={() => toggleCardSelect(card)}
                           onUpdateQuantity={(delta) => updateCardQuantity(card, delta)}
                         />
@@ -2096,6 +2202,7 @@ export default function HomePage() {
             setPriceTagFormat={setPriceTagFormat}
             printSort={printSort}
             setPrintSort={setPrintSort}
+            thbMultiplier={thbMultiplier}
           />
         )}
       </div>
@@ -2200,6 +2307,7 @@ function ArchidektCardItem({
   index = 0,
   isSelected = false,
   quantity = 0,
+  thbMultiplier = 35,
   onToggleSelect,
   onUpdateQuantity,
 }: {
@@ -2207,6 +2315,7 @@ function ArchidektCardItem({
   index?: number;
   isSelected?: boolean;
   quantity?: number;
+  thbMultiplier?: number;
   onToggleSelect: () => void;
   onUpdateQuantity: (delta: number) => void;
 }) {
@@ -2473,17 +2582,26 @@ function ArchidektCardItem({
               ? "bg-amber-400/20 text-amber-300 border border-amber-400/50 hover:bg-amber-400/30"
               : "text-slate-400 hover:text-slate-200 bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.06]"
           }`}
-          title={isSelected ? `Selected (${quantity} copies)` : "Click to select for printing"}
+          title={
+            isSelected
+              ? `Selected (${quantity} copies) • ฿${formatThbPrice(nmPrice * quantity, thbMultiplier)}`
+              : `Click to select • ฿${formatThbPrice(nmPrice, thbMultiplier)}`
+          }
         >
           {isSelected ? (
             <>
-              <Check className="w-3 h-3 text-amber-400 stroke-[2.5]" />
-              <span>{quantity}x</span>
+              <Check className="w-3 h-3 text-amber-400 stroke-[2.5] shrink-0" />
+              <span className="font-mono font-bold">{quantity}x</span>
+              <span className="text-[10px] text-amber-300/80 font-mono">
+                ฿{formatThbPrice(nmPrice * quantity, thbMultiplier)}
+              </span>
             </>
           ) : (
             <>
-              <Plus className="w-3 h-3 text-slate-400 group-hover:text-amber-400" />
-              <span>Select</span>
+              <Plus className="w-3 h-3 text-slate-400 group-hover:text-amber-400 shrink-0" />
+              <span className="font-mono font-bold text-slate-300 group-hover:text-amber-300">
+                ฿{formatThbPrice(nmPrice, thbMultiplier)}
+              </span>
             </>
           )}
         </button>
@@ -2548,6 +2666,7 @@ interface PrintStudioModalProps {
   setPriceTagFormat: (fmt: "price_only" | "name_price") => void;
   printSort?: string;
   setPrintSort?: (sort: string) => void;
+  thbMultiplier?: number;
 }
 
 function PrintStudioModal({
@@ -2574,6 +2693,7 @@ function PrintStudioModal({
   setPriceTagFormat,
   printSort = "added",
   setPrintSort,
+  thbMultiplier = 35,
 }: PrintStudioModalProps) {
   // Number of cards per sheet based on grid layout
   const cardsPerSheet = gridCols * gridRows;
@@ -2588,6 +2708,13 @@ function PrintStudioModal({
     });
     return list;
   }, [selectedCards]);
+
+  const totalQueueUsd = useMemo(() => {
+    return printCardsList.reduce((acc, item) => {
+      const p = parseFloat(item.card.condition_values?.nm_price || item.card.price_retail) || 0;
+      return acc + p * item.quantity;
+    }, 0);
+  }, [printCardsList]);
 
   const flattenedCards = useMemo<CKCard[]>(() => {
     const list: CKCard[] = [];
@@ -3240,18 +3367,23 @@ function PrintStudioModal({
 
             {/* 4. Card Print Queue */}
             <div className="bg-[#131622] border border-white/[0.06] rounded-2xl p-4 space-y-3 shadow-sm">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-1.5">
-                  <Boxes className="w-3.5 h-3.5 text-amber-400" />
-                  <span className="text-xs font-bold text-white uppercase tracking-wide">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-1.5 flex-wrap min-w-0">
+                  <Boxes className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                  <span className="text-xs font-bold text-white uppercase tracking-wide shrink-0">
                     Print Queue ({printCardsList.length} Unique)
                   </span>
+                  {totalQueueUsd > 0 && (
+                    <span className="text-[11px] font-mono text-amber-300/90 font-semibold truncate">
+                      ${formatPrice(totalQueueUsd)} • ฿{formatThbPrice(totalQueueUsd, thbMultiplier)}
+                    </span>
+                  )}
                 </div>
                 {printCardsList.length > 0 && (
                   <button
                     type="button"
                     onClick={onClearAll}
-                    className="text-[11px] text-slate-500 hover:text-rose-400 transition cursor-pointer flex items-center gap-1"
+                    className="text-[11px] text-slate-500 hover:text-rose-400 transition cursor-pointer flex items-center gap-1 shrink-0"
                   >
                     <Trash2 className="w-3 h-3" />
                     <span>Clear All</span>
@@ -3304,6 +3436,7 @@ function PrintStudioModal({
                           <span className="truncate">{card.edition}</span>
                           <span>•</span>
                           <span className="text-amber-400">${formatPrice(parseFloat(card.price_retail) || 0)}</span>
+                          <span className="text-amber-300/80">฿{formatThbPrice(parseFloat(card.price_retail) || 0, thbMultiplier)}</span>
                         </div>
                       </div>
 
