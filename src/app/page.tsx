@@ -1776,10 +1776,7 @@ export default function HomePage() {
               {/* THB Currency Multiplier (ตัวคูณเงินไทย) */}
               <div className="space-y-2 border-b border-white/[0.06] pb-3.5">
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-1.5">
-                    <label className="text-xs font-semibold text-slate-200">THB Multiplier</label>
-                    <span className="text-[10px] text-amber-400 font-mono font-medium">(ตัวคูณ)</span>
-                  </div>
+                  <label className="text-xs font-semibold text-slate-200">USD → THB</label>
                   {thbMultiplier !== 35 && (
                     <button
                       type="button"
