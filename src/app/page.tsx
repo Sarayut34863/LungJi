@@ -274,7 +274,7 @@ export function DynamicMultiSortControl({
       const defaultDir = SORT_FIELD_CONFIG[fieldId].defaultDir;
       newItems = [...activeItems, { id: fieldId, direction: defaultDir }];
     } else {
-      // Already selected in chain ("ซ้อนกัน"):
+      // Already selected in chain:
       const currentItem = activeItems[existingIndex];
       const defaultDir = SORT_FIELD_CONFIG[fieldId].defaultDir;
 
@@ -285,7 +285,7 @@ export function DynamicMultiSortControl({
           idx === existingIndex ? { ...it, direction: toggledDir } : it
         );
       } else {
-        // 3rd click: "ซ้อนกันก็ให้รีเซ็ต" -> Remove from chain (reset this field)!
+        // 3rd click: Remove from chain (reset this field)
         newItems = activeItems.filter((_, idx) => idx !== existingIndex);
       }
     }
@@ -400,7 +400,7 @@ export function DynamicMultiSortControl({
           <div className="text-[10px] uppercase font-bold tracking-wider text-slate-400 flex items-center justify-between px-0.5">
             <span className="flex items-center gap-1.5">
               <Menu className="w-3.5 h-3.5 text-amber-400" />
-              <span>Priority Order (Drag ☰)</span>
+              <span>Priority Order</span>
             </span>
             <span className="text-slate-500 font-mono text-[9px]">1st → 2nd</span>
           </div>
@@ -1644,11 +1644,11 @@ export default function HomePage() {
                         className="text-[9px] px-1.5 py-0.5 rounded font-mono font-medium border transition cursor-pointer bg-amber-400/10 hover:bg-amber-400/20 text-amber-300 border-amber-400/30"
                         title={
                           colorMode === "exact"
-                            ? "Current: Exact Mixture (ผสมสี) - Click to match Any"
-                            : "Current: Any color - Click to match Exact Mixture"
+                            ? "Exact Match - Click for Any"
+                            : "Any Selected - Click for Exact Match"
                         }
                       >
-                        {colorMode === "exact" ? "Mix (ผสม)" : "Any (รวม)"}
+                        {colorMode === "exact" ? "Mix" : "Any"}
                       </button>
                     )}
                   </div>
@@ -1773,7 +1773,7 @@ export default function HomePage() {
                 }}
               />
 
-              {/* THB Currency Multiplier (ตัวคูณเงินไทย) */}
+              {/* USD to THB Rate Setting */}
               <div className="space-y-2 border-b border-white/[0.06] pb-3.5">
                 <div className="flex items-center justify-between">
                   <label className="text-xs font-semibold text-slate-200">USD → THB</label>
@@ -2892,7 +2892,7 @@ function PrintStudioModal({
                 <div className="flex items-center gap-1.5">
                   <Layers className="w-3.5 h-3.5 text-amber-400" />
                   <label className="text-xs font-bold text-white tracking-wide uppercase">
-                    Cards per Sheet (จำนวนการ์ดต่อแผ่น)
+                    Cards per Sheet
                   </label>
                 </div>
                 <div className="flex items-baseline gap-1">
@@ -2917,7 +2917,7 @@ function PrintStudioModal({
                   }`}
                 >
                   <Zap className="w-3.5 h-3.5" />
-                  <span>High Density (เยอะสุด)</span>
+                  <span>High Density</span>
                 </button>
                 <button
                   type="button"
@@ -2929,7 +2929,7 @@ function PrintStudioModal({
                   }`}
                 >
                   <Grid className="w-3.5 h-3.5" />
-                  <span>Standard (ปกติ)</span>
+                  <span>Standard</span>
                 </button>
                 <button
                   type="button"
@@ -2941,7 +2941,7 @@ function PrintStudioModal({
                   }`}
                 >
                   <SlidersHorizontal className="w-3.5 h-3.5" />
-                  <span>Custom (กำหนดเอง)</span>
+                  <span>Custom</span>
                 </button>
               </div>
 
@@ -3051,7 +3051,7 @@ function PrintStudioModal({
                 <div className="p-3 rounded-xl bg-[#090b12] border border-white/[0.06] space-y-3 animate-in fade-in duration-150">
                   <div className="grid grid-cols-2 gap-3 text-xs">
                     <div>
-                      <span className="text-slate-400 block mb-1">Columns (คอลัมน์)</span>
+                      <span className="text-slate-400 block mb-1">Columns</span>
                       <div className="flex items-center gap-1.5 bg-[#131622] border border-white/10 rounded-lg p-1">
                         <button
                           type="button"
@@ -3074,7 +3074,7 @@ function PrintStudioModal({
                     </div>
 
                     <div>
-                      <span className="text-slate-400 block mb-1">Rows (แถว)</span>
+                      <span className="text-slate-400 block mb-1">Rows</span>
                       <div className="flex items-center gap-1.5 bg-[#131622] border border-white/10 rounded-lg p-1">
                         <button
                           type="button"
@@ -3159,15 +3159,12 @@ function PrintStudioModal({
               </div>
             </div>
 
-            {/* 2. PRICE UNDER CARD TOGGLE (Requested by user!) */}
+            {/* 2. PRICE UNDER CARD TOGGLE */}
             <div className="bg-[#131622] border border-amber-400/25 rounded-2xl p-3.5 space-y-2.5 shadow-sm">
               <div className="flex items-center justify-between">
                 <div className="space-y-0.5">
                   <div className="flex items-center gap-1.5 text-xs font-bold text-white">
                     <span>Show Price under Card</span>
-                    <span className="px-1.5 py-0.2 rounded bg-amber-400/20 text-amber-300 text-[10px] font-mono font-semibold">
-                      ใส่ราคาใต้การ์ด
-                    </span>
                   </div>
                   <div className="text-[10px] text-slate-400">
                     Displays Card Kingdom NM price below each printed card
