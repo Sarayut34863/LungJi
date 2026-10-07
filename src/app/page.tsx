@@ -90,7 +90,7 @@ export const SORT_FIELD_CONFIG: Record<
   },
   number: {
     label: "Collector Number",
-    shortLabel: "Card #",
+    shortLabel: "Collector Number",
     ascLabel: "1 → 999",
     descLabel: "999 → 1",
     defaultDir: "asc",
