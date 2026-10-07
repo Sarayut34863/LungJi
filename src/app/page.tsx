@@ -151,6 +151,13 @@ export const COLOR_OPTIONS = [
     inactiveClass: "text-emerald-400/70 hover:text-emerald-400 hover:bg-white/[0.03]",
   },
   {
+    code: "M",
+    label: "Multicolor",
+    short: "M",
+    activeClass: "bg-amber-500/25 text-amber-300 border-amber-400/50 ring-1 ring-amber-400/30",
+    inactiveClass: "text-amber-400/70 hover:text-amber-300 hover:bg-white/[0.03]",
+  },
+  {
     code: "C",
     label: "Colorless",
     short: "C",
@@ -954,6 +961,7 @@ export default function HomePage() {
   const [selectedEdition, setSelectedEdition] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [foilFilter, setFoilFilter] = useState<"all" | "foil" | "nonfoil">("all");
+  const [tokenFilter, setTokenFilter] = useState<"hide" | "show">("hide");
   const [selectedRarities, setSelectedRarities] = useState<string[]>([]);
   const [selectedColors, setSelectedColors] = useState<string[]>([]);
   const [colorMode, setColorMode] = useState<"exact" | "any">("exact");
@@ -1095,6 +1103,7 @@ export default function HomePage() {
   const activeFilterCount =
     (selectedEdition !== "all" ? 1 : 0) +
     (foilFilter !== "all" ? 1 : 0) +
+    (tokenFilter !== "hide" ? 1 : 0) +
     selectedRarities.length +
     selectedColors.length +
     (sliderMin > 0 || sliderMax < 100 ? 1 : 0);
@@ -1171,7 +1180,7 @@ export default function HomePage() {
       const colorParam = selectedColors.length === 0 ? "all" : selectedColors.join(",");
       const minPriceQuery = debouncedMin > 0 ? String(debouncedMin) : "";
       const maxPriceQuery = debouncedMax < 100 ? String(debouncedMax) : "";
-      const cacheKey = `${selectedEdition}|${debouncedQuery}|${foilFilter}|${rarityParam}|${colorParam}|${colorMode}|${minPriceQuery}|${maxPriceQuery}|${sortBy}|${currentPage}|${rowsPerPage}`;
+      const cacheKey = `${selectedEdition}|${debouncedQuery}|${foilFilter}|${tokenFilter}|${rarityParam}|${colorParam}|${colorMode}|${minPriceQuery}|${maxPriceQuery}|${sortBy}|${currentPage}|${rowsPerPage}`;
 
       // Check cache first (0ms instant response)
       const cached = queryCacheRef.current.get(cacheKey);
@@ -1197,6 +1206,7 @@ export default function HomePage() {
           edition: selectedEdition,
           search: debouncedQuery,
           foil: foilFilter,
+          tokens: tokenFilter,
           rarity: rarityParam,
           sortBy: sortBy,
           page: String(currentPage),
@@ -1245,7 +1255,7 @@ export default function HomePage() {
         }
       }
     },
-    [selectedEdition, debouncedQuery, foilFilter, selectedRarities, selectedColors, colorMode, debouncedMin, debouncedMax, sortBy, currentPage, rowsPerPage]
+    [selectedEdition, debouncedQuery, foilFilter, tokenFilter, selectedRarities, selectedColors, colorMode, debouncedMin, debouncedMax, sortBy, currentPage, rowsPerPage]
   );
 
   useEffect(() => {
@@ -1262,13 +1272,14 @@ export default function HomePage() {
       const colorParam = selectedColors.length === 0 ? "all" : selectedColors.join(",");
       const minPriceQuery = debouncedMin > 0 ? String(debouncedMin) : "";
       const maxPriceQuery = debouncedMax < 100 ? String(debouncedMax) : "";
-      const nextKey = `${selectedEdition}|${debouncedQuery}|${foilFilter}|${rarityParam}|${colorParam}|${colorMode}|${minPriceQuery}|${maxPriceQuery}|${sortBy}|${nextPage}|${rowsPerPage}`;
+      const nextKey = `${selectedEdition}|${debouncedQuery}|${foilFilter}|${tokenFilter}|${rarityParam}|${colorParam}|${colorMode}|${minPriceQuery}|${maxPriceQuery}|${sortBy}|${nextPage}|${rowsPerPage}`;
 
       if (!queryCacheRef.current.has(nextKey)) {
         const params = new URLSearchParams({
           edition: selectedEdition,
           search: debouncedQuery,
           foil: foilFilter,
+          tokens: tokenFilter,
           rarity: rarityParam,
           sortBy: sortBy,
           page: String(nextPage),
@@ -1301,7 +1312,7 @@ export default function HomePage() {
     }, 1500);
 
     return () => clearTimeout(prefetchTimer);
-  }, [currentPage, totalPages, isLoading, cards.length, selectedEdition, debouncedQuery, foilFilter, selectedRarities, selectedColors, colorMode, debouncedMin, debouncedMax, sortBy, rowsPerPage]);
+  }, [currentPage, totalPages, isLoading, cards.length, selectedEdition, debouncedQuery, foilFilter, tokenFilter, selectedRarities, selectedColors, colorMode, debouncedMin, debouncedMax, sortBy, rowsPerPage]);
 
   // Auto-sync data in the background every 30 minutes
   useEffect(() => {
@@ -1317,6 +1328,7 @@ export default function HomePage() {
     setSearchQuery("");
     setSelectedEdition("all");
     setFoilFilter("all");
+    setTokenFilter("hide");
     setSelectedRarities([]);
     setSelectedColors([]);
     setColorMode("exact");
@@ -1508,7 +1520,7 @@ export default function HomePage() {
                   <Filter className="w-3.5 h-3.5 text-amber-400" />
                   <span>Filters</span>
                 </div>
-                {(searchQuery || selectedEdition !== "all" || foilFilter !== "all" || selectedRarities.length > 0 || selectedColors.length > 0 || sliderMin > 0 || sliderMax < 100) && (
+                {(searchQuery || selectedEdition !== "all" || foilFilter !== "all" || tokenFilter !== "hide" || selectedRarities.length > 0 || selectedColors.length > 0 || sliderMin > 0 || sliderMax < 100) && (
                   <button
                     onClick={handleClearForm}
                     className="text-[10px] font-medium text-slate-400 hover:text-amber-400 transition"
@@ -1673,7 +1685,7 @@ export default function HomePage() {
                     </button>
                   )}
                 </div>
-                <div className="grid grid-cols-8 gap-1 bg-[#0b0d14] p-1 rounded-lg border border-white/[0.06]">
+                <div className="grid grid-cols-9 gap-1 bg-[#0b0d14] p-1 rounded-lg border border-white/[0.06]">
                   <button
                     type="button"
                     onClick={() => {
@@ -1763,6 +1775,58 @@ export default function HomePage() {
                   >
                     <Sparkles className="w-3 h-3 text-amber-400" />
                     <span>Foil</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Tokens Filter (Default: Hide) */}
+              <div className="space-y-1.5 border-b border-white/[0.06] pb-3.5">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-semibold text-slate-200">Tokens</label>
+                  {tokenFilter === "show" && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setTokenFilter("hide");
+                        setCurrentPage(1);
+                      }}
+                      className="text-[10px] text-amber-400 hover:text-amber-300 transition cursor-pointer"
+                      title="Hide tokens (Default)"
+                    >
+                      Reset (Hide)
+                    </button>
+                  )}
+                </div>
+                <div className="grid grid-cols-2 gap-1 bg-[#0b0d14] p-1 rounded-lg border border-white/[0.06]">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setTokenFilter("hide");
+                      setCurrentPage(1);
+                    }}
+                    className={`py-1.5 text-xs font-medium rounded-md transition cursor-pointer text-center ${
+                      tokenFilter === "hide"
+                        ? "bg-white/[0.08] text-white font-semibold border border-white/[0.08]"
+                        : "text-slate-400 hover:text-slate-200"
+                    }`}
+                    title="Hide all token cards (Default)"
+                  >
+                    Hide
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setTokenFilter("show");
+                      setCurrentPage(1);
+                    }}
+                    className={`py-1.5 text-xs font-medium rounded-md transition cursor-pointer text-center ${
+                      tokenFilter === "show"
+                        ? "bg-amber-400/15 text-amber-300 border border-amber-400/30 font-semibold"
+                        : "text-slate-400 hover:text-slate-200"
+                    }`}
+                    title="Include token cards in catalog"
+                  >
+                    Show
                   </button>
                 </div>
               </div>
@@ -1906,6 +1970,20 @@ export default function HomePage() {
                       title="Clear foil filter"
                     >
                       <span>{foilFilter === "foil" ? "Foil" : "Normal"}</span>
+                      <X className="w-3 h-3 text-amber-400/70 group-hover:text-amber-300 shrink-0" />
+                    </button>
+                  )}
+                  {tokenFilter === "show" && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setTokenFilter("hide");
+                        setCurrentPage(1);
+                      }}
+                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-400/10 hover:bg-amber-400/15 border border-amber-400/25 text-amber-300 text-[11px] transition group"
+                      title="Hide tokens (Default)"
+                    >
+                      <span>Tokens: Included</span>
                       <X className="w-3 h-3 text-amber-400/70 group-hover:text-amber-300 shrink-0" />
                     </button>
                   )}
@@ -2527,7 +2605,7 @@ function ArchidektCardItem({
                   ? "text-red-300 bg-red-950/40 border border-red-400/30"
                   : card.color === "G"
                   ? "text-emerald-300 bg-emerald-950/40 border border-emerald-400/30"
-                  : card.color === "M"
+                  : card.color === "M" || card.color.length >= 2
                   ? "text-amber-300 bg-amber-500/20 border border-amber-400/40"
                   : card.color === "L"
                   ? "text-orange-200 bg-stone-900 border border-stone-600/40"
@@ -2544,8 +2622,8 @@ function ArchidektCardItem({
                   ? "Red"
                   : card.color === "G"
                   ? "Green"
-                  : card.color === "M"
-                  ? "Multicolor"
+                  : card.color === "M" || card.color.length >= 2
+                  ? `Multicolor (${card.color})`
                   : card.color === "L"
                   ? "Land"
                   : "Colorless"

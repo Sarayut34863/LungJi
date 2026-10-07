@@ -53,6 +53,7 @@ export interface SearchParams {
   rarity?: string;
   color?: string;
   colorMode?: "exact" | "any";
+  tokens?: "hide" | "show";
   inStock?: boolean;
   minPrice?: number;
   maxPrice?: number;
@@ -238,6 +239,11 @@ export async function searchCards(params: SearchParams) {
   const where: string[] = [];
   const binds: (string | number)[] = [];
 
+  // Tokens filter (Default: hide tokens - ซ่อน token ไว้เป็นค่าเริ่มต้น)
+  if (params.tokens !== "show") {
+    where.push("clean_name NOT LIKE '%token%' AND edition NOT LIKE '%token%'");
+  }
+
   if (edition && edition !== "all") {
     let targetEdition = edition.trim();
     const upper = targetEdition.toUpperCase();
@@ -264,12 +270,15 @@ export async function searchCards(params: SearchParams) {
     const WUBRG = ["W", "U", "B", "R", "G"];
     const WUBRG_ORDER: Record<string, number> = { W: 0, U: 1, B: 2, R: 3, G: 4 };
 
+    const hasM = rawTokens.includes("M");
     const manaColors: string[] = [];
     const specialColors: string[] = [];
 
     for (const tok of rawTokens) {
       if (tok === "C" || tok === "L") {
         if (!specialColors.includes(tok)) specialColors.push(tok);
+      } else if (tok === "M") {
+        // Handled via hasM flag
       } else if (tok.length === 1 && WUBRG.includes(tok)) {
         if (!manaColors.includes(tok)) manaColors.push(tok);
       } else if (tok.length > 1) {
@@ -284,28 +293,58 @@ export async function searchCards(params: SearchParams) {
     manaColors.sort((a, b) => (WUBRG_ORDER[a] ?? 9) - (WUBRG_ORDER[b] ?? 9));
     const combo = manaColors.join("");
 
-    if (manaColors.length > 0 && specialColors.length === 0) {
-      if (manaColors.length === 1) {
-        where.push("color = ?");
-        binds.push(manaColors[0]);
-      } else {
-        // Multi-color mixture (ผสมสี e.g. WU, UBR, WUBRG)
+    if (hasM) {
+      // User requested M (Multicolor - all combinations with 2 or more colors)
+      if (manaColors.length === 0 && specialColors.length === 0) {
+        where.push("length(color) >= 2");
+      } else if (manaColors.length > 0 && specialColors.length === 0) {
         if (colorMode === "any") {
-          const targets = [...manaColors, combo];
-          where.push(`color IN (${targets.map(() => "?").join(",")})`);
-          binds.push(...targets);
+          where.push(`(color IN (${manaColors.map(() => "?").join(",")}) OR length(color) >= 2)`);
+          binds.push(...manaColors);
         } else {
-          where.push("color = ?");
-          binds.push(combo);
+          // In Mix mode with M + specific colors: multicolor cards that contain all specified colors
+          const likes = manaColors.map(() => "color LIKE ?").join(" AND ");
+          where.push(`(length(color) >= 2 AND ${likes})`);
+          binds.push(...manaColors.map((c) => `%${c}%`));
+        }
+      } else if (manaColors.length === 0 && specialColors.length > 0) {
+        where.push(`(length(color) >= 2 OR color IN (${specialColors.map(() => "?").join(",")}))`);
+        binds.push(...specialColors);
+      } else {
+        if (colorMode === "any") {
+          const allTargets = [...manaColors, ...specialColors];
+          where.push(`(color IN (${allTargets.map(() => "?").join(",")}) OR length(color) >= 2)`);
+          binds.push(...allTargets);
+        } else {
+          const likes = manaColors.map(() => "color LIKE ?").join(" AND ");
+          where.push(`((length(color) >= 2 AND ${likes}) OR color IN (${specialColors.map(() => "?").join(",")}))`);
+          binds.push(...manaColors.map((c) => `%${c}%`), ...specialColors);
         }
       }
-    } else if (specialColors.length > 0 && manaColors.length === 0) {
-      where.push(`color IN (${specialColors.map(() => "?").join(",")})`);
-      binds.push(...specialColors);
-    } else if (manaColors.length > 0 && specialColors.length > 0) {
-      const targets = manaColors.length === 1 ? [manaColors[0], ...specialColors] : [combo, ...specialColors];
-      where.push(`color IN (${targets.map(() => "?").join(",")})`);
-      binds.push(...targets);
+    } else {
+      // Standard color filtering without M
+      if (manaColors.length > 0 && specialColors.length === 0) {
+        if (manaColors.length === 1) {
+          where.push("color = ?");
+          binds.push(manaColors[0]);
+        } else {
+          if (colorMode === "any") {
+            const targets = [...manaColors, combo];
+            where.push(`color IN (${targets.map(() => "?").join(",")})`);
+            binds.push(...targets);
+          } else {
+            where.push("color = ?");
+            binds.push(combo);
+          }
+        }
+      } else if (specialColors.length > 0 && manaColors.length === 0) {
+        where.push(`color IN (${specialColors.map(() => "?").join(",")})`);
+        binds.push(...specialColors);
+      } else if (manaColors.length > 0 && specialColors.length > 0) {
+        const targets = manaColors.length === 1 ? [manaColors[0], ...specialColors] : [combo, ...specialColors];
+        where.push(`color IN (${targets.map(() => "?").join(",")})`);
+        binds.push(...targets);
+      }
     }
   }
 
