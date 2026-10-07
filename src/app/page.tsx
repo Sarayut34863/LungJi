@@ -28,6 +28,8 @@ import {
   Grid,
   SlidersHorizontal,
   ChevronUp,
+  ArrowUp,
+  ArrowDown,
 } from "lucide-react";
 import { CKCard, EditionSummary } from "@/lib/cardkingdom";
 
@@ -52,6 +54,384 @@ function formatPrice(num: number): string {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   });
+}
+
+export type SortFieldId = "color" | "price" | "number" | "name";
+
+export interface ActiveSortItem {
+  id: SortFieldId;
+  direction: "asc" | "desc";
+}
+
+export const SORT_FIELD_CONFIG: Record<
+  SortFieldId,
+  {
+    label: string;
+    shortLabel: string;
+    ascLabel: string;
+    descLabel: string;
+    defaultDir: "asc" | "desc";
+  }
+> = {
+  color: {
+    label: "Color (WUBRG)",
+    shortLabel: "Color",
+    ascLabel: "WUBRG",
+    descLabel: "Land → W",
+    defaultDir: "asc",
+  },
+  price: {
+    label: "Price ($)",
+    shortLabel: "Price",
+    ascLabel: "Low → High",
+    descLabel: "High → Low",
+    defaultDir: "desc",
+  },
+  number: {
+    label: "Collector Number",
+    shortLabel: "Card #",
+    ascLabel: "1 → 999",
+    descLabel: "999 → 1",
+    defaultDir: "asc",
+  },
+  name: {
+    label: "Card Name",
+    shortLabel: "Name",
+    ascLabel: "A → Z",
+    descLabel: "Z → A",
+    defaultDir: "asc",
+  },
+};
+
+export function parseSortStringToItems(sortStr: string): ActiveSortItem[] {
+  if (!sortStr) return [{ id: "price", direction: "desc" }];
+  const parts = sortStr.split(",").map((s) => s.trim().toLowerCase()).filter(Boolean);
+  const items: ActiveSortItem[] = [];
+  const seen = new Set<string>();
+
+  for (const part of parts) {
+    let id: SortFieldId | null = null;
+    let dir: "asc" | "desc" = "asc";
+
+    if (part === "color" || part === "color_asc" || part === "color_wubrg" || part === "color_order" || part === "color_order_asc") {
+      id = "color"; dir = "asc";
+    } else if (part === "color_desc" || part === "color_order_desc") {
+      id = "color"; dir = "desc";
+    } else if (part === "price" || part === "price_desc" || part === "price_retail_desc") {
+      id = "price"; dir = "desc";
+    } else if (part === "price_asc" || part === "price_retail_asc") {
+      id = "price"; dir = "asc";
+    } else if (part === "number" || part === "number_asc" || part === "collector" || part === "collector_asc" || part === "collector_number" || part === "collector_number_asc") {
+      id = "number"; dir = "asc";
+    } else if (part === "number_desc" || part === "collector_desc" || part === "collector_number_desc") {
+      id = "number"; dir = "desc";
+    } else if (part === "name" || part === "name_asc") {
+      id = "name"; dir = "asc";
+    } else if (part === "name_desc") {
+      id = "name"; dir = "desc";
+    }
+
+    if (id && !seen.has(id)) {
+      seen.add(id);
+      items.push({ id, direction: dir });
+    }
+  }
+
+  // Handle legacy combo tokens like "color_price_desc"
+  if (items.length === 0) {
+    if (sortStr === "color_price_desc") {
+      return [{ id: "color", direction: "asc" }, { id: "price", direction: "desc" }];
+    } else if (sortStr === "color_price_asc") {
+      return [{ id: "color", direction: "asc" }, { id: "price", direction: "asc" }];
+    } else if (sortStr === "color_number_asc") {
+      return [{ id: "color", direction: "asc" }, { id: "number", direction: "asc" }];
+    } else if (sortStr === "number_price_desc") {
+      return [{ id: "number", direction: "asc" }, { id: "price", direction: "desc" }];
+    }
+    return [{ id: "price", direction: "desc" }];
+  }
+
+  return items;
+}
+
+export function itemsToSortString(items: ActiveSortItem[]): string {
+  if (items.length === 0) return "price_desc";
+  return items.map((it) => `${it.id}_${it.direction}`).join(",");
+}
+
+export function DynamicMultiSortControl({
+  sortBy,
+  onChange,
+  onReset,
+  title = "Sort By",
+  allowSelectionOrder = false,
+}: {
+  sortBy: string;
+  onChange: (newSort: string) => void;
+  onReset?: () => void;
+  title?: string;
+  allowSelectionOrder?: boolean;
+}) {
+  const isSelectionOrder = allowSelectionOrder && sortBy === "added";
+  const activeItems = useMemo(() => {
+    if (isSelectionOrder) return [];
+    return parseSortStringToItems(sortBy);
+  }, [sortBy, isSelectionOrder]);
+
+  const handleToggleField = (fieldId: SortFieldId) => {
+    const existingIndex = activeItems.findIndex((it) => it.id === fieldId);
+    let newItems: ActiveSortItem[];
+
+    if (existingIndex === -1) {
+      // 1st click: Add to end of chain with default direction!
+      const defaultDir = SORT_FIELD_CONFIG[fieldId].defaultDir;
+      newItems = [...activeItems, { id: fieldId, direction: defaultDir }];
+    } else {
+      // Already selected in chain ("ซ้อนกัน"):
+      const currentItem = activeItems[existingIndex];
+      const defaultDir = SORT_FIELD_CONFIG[fieldId].defaultDir;
+
+      if (currentItem.direction === defaultDir) {
+        // 2nd click: Toggle direction!
+        const toggledDir = defaultDir === "asc" ? "desc" : "asc";
+        newItems = activeItems.map((it, idx) =>
+          idx === existingIndex ? { ...it, direction: toggledDir } : it
+        );
+      } else {
+        // 3rd click: "ซ้อนกันก็ให้รีเซ็ต" -> Remove from chain (reset this field)!
+        newItems = activeItems.filter((_, idx) => idx !== existingIndex);
+      }
+    }
+
+    if (newItems.length === 0) {
+      if (allowSelectionOrder) {
+        onChange("added");
+        return;
+      }
+      newItems = [{ id: "price", direction: "desc" }];
+    }
+
+    onChange(itemsToSortString(newItems));
+  };
+
+  const handleToggleItemDirection = (fieldId: SortFieldId) => {
+    const newItems = activeItems.map((it) =>
+      it.id === fieldId ? { ...it, direction: it.direction === "asc" ? ("desc" as const) : ("asc" as const) } : it
+    );
+    onChange(itemsToSortString(newItems));
+  };
+
+  const handleRemoveItem = (fieldId: SortFieldId) => {
+    const newItems = activeItems.filter((it) => it.id !== fieldId);
+    if (newItems.length === 0) {
+      if (allowSelectionOrder) {
+        onChange("added");
+        return;
+      }
+      onChange("price_desc");
+      return;
+    }
+    onChange(itemsToSortString(newItems));
+  };
+
+  const handleMoveItem = (index: number, direction: -1 | 1) => {
+    const targetIndex = index + direction;
+    if (targetIndex < 0 || targetIndex >= activeItems.length) return;
+    const copy = [...activeItems];
+    const temp = copy[index];
+    copy[index] = copy[targetIndex];
+    copy[targetIndex] = temp;
+    onChange(itemsToSortString(copy));
+  };
+
+  const handleResetClick = () => {
+    if (onReset) {
+      onReset();
+    } else {
+      onChange(allowSelectionOrder ? "added" : "price_desc");
+    }
+  };
+
+  return (
+    <div className="space-y-2">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-1.5">
+          <label className="text-xs font-semibold text-slate-200">{title}</label>
+          <ArrowUpDown className="w-3.5 h-3.5 text-slate-400" />
+          {activeItems.length > 1 && (
+            <span className="text-[10px] bg-amber-400/20 text-amber-300 font-mono font-bold px-1.5 py-0.2 rounded-full border border-amber-400/30">
+              {activeItems.length} chained
+            </span>
+          )}
+        </div>
+        <button
+          type="button"
+          onClick={handleResetClick}
+          className="text-[11px] text-slate-400 hover:text-amber-400 transition flex items-center gap-1 cursor-pointer font-medium"
+          title="Reset sort to default"
+        >
+          <RotateCcw className="w-3 h-3" />
+          <span>Reset</span>
+        </button>
+      </div>
+
+      {/* Active Sort Chain Display */}
+      {isSelectionOrder ? (
+        <div className="p-2 rounded-xl bg-[#090b12] border border-white/[0.08] text-xs text-slate-400 flex items-center justify-between">
+          <span className="font-medium text-slate-300">As Added (Selection Order)</span>
+          <span className="text-[10px] text-slate-500 font-mono">Original</span>
+        </div>
+      ) : (
+        <div className="space-y-1.5 p-2 rounded-xl bg-[#090b12] border border-white/[0.08]">
+          <div className="text-[10px] uppercase font-bold tracking-wider text-slate-500 flex items-center justify-between">
+            <span>Active Sort Chain</span>
+            <span className="text-slate-600 font-mono">1st → 2nd → 3rd</span>
+          </div>
+
+          <div className="flex items-center gap-1.5 flex-wrap">
+            {activeItems.map((item, idx) => {
+              const config = SORT_FIELD_CONFIG[item.id];
+              return (
+                <div
+                  key={item.id}
+                  className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-amber-400/15 border border-amber-400/40 text-amber-300 text-xs font-semibold shadow-sm"
+                >
+                  <span className="w-4 h-4 rounded-full bg-amber-400 text-slate-950 text-[10px] font-bold flex items-center justify-center font-mono shrink-0">
+                    {idx + 1}
+                  </span>
+                  <span className="text-slate-100">{config.shortLabel}:</span>
+
+                  {/* Toggle Direction Pill */}
+                  <button
+                    type="button"
+                    onClick={() => handleToggleItemDirection(item.id)}
+                    className="flex items-center gap-0.5 text-amber-300 hover:text-white bg-amber-400/20 hover:bg-amber-400/30 px-1.5 py-0.5 rounded transition cursor-pointer text-[10px] font-mono font-medium"
+                    title="Click to toggle order direction"
+                  >
+                    <span>{item.direction === "asc" ? config.ascLabel : config.descLabel}</span>
+                    {item.direction === "asc" ? (
+                      <ArrowUp className="w-2.5 h-2.5" />
+                    ) : (
+                      <ArrowDown className="w-2.5 h-2.5" />
+                    )}
+                  </button>
+
+                  {/* Move Left / Right if multi */}
+                  {activeItems.length > 1 && (
+                    <div className="flex items-center gap-0.5 ml-0.5 border-l border-amber-400/30 pl-1">
+                      {idx > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => handleMoveItem(idx, -1)}
+                          className="hover:text-white p-0.5 text-slate-400 text-[10px] leading-none"
+                          title="Move priority left"
+                        >
+                          ◀
+                        </button>
+                      )}
+                      {idx < activeItems.length - 1 && (
+                        <button
+                          type="button"
+                          onClick={() => handleMoveItem(idx, 1)}
+                          className="hover:text-white p-0.5 text-slate-400 text-[10px] leading-none"
+                          title="Move priority right"
+                        >
+                          ▶
+                        </button>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Remove / Reset single criterion */}
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveItem(item.id)}
+                    className="text-amber-400/70 hover:text-rose-400 p-0.5 rounded transition cursor-pointer ml-0.5"
+                    title={`Remove ${config.label} from sort`}
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Clickable Quick Buttons for 4 Fields */}
+      <div className="grid grid-cols-2 gap-1.5 pt-0.5">
+        {(["color", "price", "number", "name"] as const).map((fieldId) => {
+          const config = SORT_FIELD_CONFIG[fieldId];
+          const activeIndex = activeItems.findIndex((it) => it.id === fieldId);
+          const isActive = !isSelectionOrder && activeIndex !== -1;
+          const currentItem = isActive ? activeItems[activeIndex] : null;
+
+          return (
+            <button
+              key={fieldId}
+              type="button"
+              onClick={() => handleToggleField(fieldId)}
+              className={`flex items-center justify-between p-2 rounded-xl border text-xs text-left transition active:scale-[0.98] cursor-pointer ${
+                isActive
+                  ? "bg-amber-400/15 border-amber-400/50 text-amber-300 font-semibold shadow-sm shadow-amber-500/10"
+                  : "bg-[#0b0d14] border-white/[0.08] text-slate-400 hover:text-slate-200 hover:border-white/[0.18]"
+              }`}
+              title={
+                isActive
+                  ? `Priority #${activeIndex + 1}: ${config.label} (${currentItem?.direction === "asc" ? config.ascLabel : config.descLabel}). Click to change direction or remove.`
+                  : `Click to add ${config.label} to sort priority`
+              }
+            >
+              <div className="flex items-center gap-1.5 min-w-0">
+                {isActive ? (
+                  <span className="w-4 h-4 rounded-full bg-amber-400 text-slate-950 text-[10px] font-bold flex items-center justify-center shrink-0 font-mono">
+                    {activeIndex + 1}
+                  </span>
+                ) : (
+                  <Plus className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+                )}
+                <span className="truncate">{config.shortLabel}</span>
+              </div>
+              <div className="flex items-center gap-0.5 text-[10px] opacity-85 shrink-0 font-mono">
+                {isActive ? (
+                  <>
+                    <span>{currentItem?.direction === "asc" ? config.ascLabel : config.descLabel}</span>
+                    {currentItem?.direction === "asc" ? (
+                      <ArrowUp className="w-2.5 h-2.5 text-amber-400" />
+                    ) : (
+                      <ArrowDown className="w-2.5 h-2.5 text-amber-400" />
+                    )}
+                  </>
+                ) : (
+                  <span className="text-slate-500">{config.defaultDir === "asc" ? config.ascLabel : config.descLabel}</span>
+                )}
+              </div>
+            </button>
+          );
+        })}
+      </div>
+
+      {allowSelectionOrder && (
+        <button
+          type="button"
+          onClick={() => onChange("added")}
+          className={`w-full py-1.5 px-2 rounded-lg border text-xs text-center transition cursor-pointer ${
+            isSelectionOrder
+              ? "bg-amber-400/15 border-amber-400/50 text-amber-300 font-semibold"
+              : "bg-[#0b0d14] border-white/[0.08] text-slate-400 hover:text-slate-200"
+          }`}
+        >
+          Reset to Selection Order (As Added)
+        </button>
+      )}
+
+      {/* Helpful Hint */}
+      <div className="text-[10px] text-slate-500 leading-tight">
+        Tip: Click a field to add • Click again to toggle order • Click to remove / reset
+      </div>
+    </div>
+  );
 }
 
 // Searchable Edition Dropdown / Combobox
@@ -1092,40 +1472,19 @@ export default function HomePage() {
                 }}
               />
 
-              {/* Sort Order */}
-              <div className="space-y-1.5 border-b border-white/[0.06] pb-3.5">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-1.5">
-                    <label className="text-xs font-semibold text-slate-200">Sort By</label>
-                    <ArrowUpDown className="w-3.5 h-3.5 text-slate-400" />
-                  </div>
-                  {sortBy.includes("color") && (
-                    <span className="text-[10px] text-amber-400 font-mono font-medium">WUBRG</span>
-                  )}
-                </div>
-                <select
-                  value={sortBy}
-                  onChange={(e) => {
-                    setSortBy(e.target.value);
+              {/* Dynamic Multi-Sort Order */}
+              <div className="border-b border-white/[0.06] pb-3.5">
+                <DynamicMultiSortControl
+                  sortBy={sortBy}
+                  onChange={(newSort) => {
+                    setSortBy(newSort);
                     setCurrentPage(1);
                   }}
-                  className="w-full bg-[#0b0d14] border border-white/[0.08] rounded-lg px-2.5 py-2 text-xs text-slate-200 outline-none focus:border-amber-400/60 cursor-pointer"
-                >
-                  <optgroup label="Single Sort" className="bg-[#12141f] text-slate-400 font-semibold">
-                    <option value="price_desc" className="text-slate-200">Price: High to Low</option>
-                    <option value="price_asc" className="text-slate-200">Price: Low to High</option>
-                    <option value="number_asc" className="text-slate-200">Collector Number: 1 to 999</option>
-                    <option value="number_desc" className="text-slate-200">Collector Number: 999 to 1</option>
-                    <option value="color_asc" className="text-slate-200">Color: WUBRG (White to Land)</option>
-                    <option value="name_asc" className="text-slate-200">Card Name: A to Z</option>
-                  </optgroup>
-                  <optgroup label="Multi-Sort (Combined)" className="bg-[#12141f] text-slate-400 font-semibold">
-                    <option value="color_price_desc" className="text-slate-200">Color then Price: High to Low</option>
-                    <option value="color_price_asc" className="text-slate-200">Color then Price: Low to High</option>
-                    <option value="color_number_asc" className="text-slate-200">Color then Collector Number</option>
-                    <option value="number_price_desc" className="text-slate-200">Collector Number then Price: High to Low</option>
-                  </optgroup>
-                </select>
+                  onReset={() => {
+                    setSortBy("price_desc");
+                    setCurrentPage(1);
+                  }}
+                />
               </div>
 
               {/* Rows per page */}
@@ -1831,70 +2190,31 @@ function ArchidektCardItem({
 // ========================================================
 function sortCardsList(cards: CKCard[], sortMode: string = "added"): CKCard[] {
   if (!sortMode || sortMode === "added") return cards;
+  const items = parseSortStringToItems(sortMode);
+  if (items.length === 0) return cards;
+
   const list = [...cards];
-  switch (sortMode) {
-    case "color_asc":
-      return list.sort((a, b) => {
+  return list.sort((a, b) => {
+    for (const item of items) {
+      if (item.id === "color") {
         const cA = a.color_order ?? 7;
         const cB = b.color_order ?? 7;
-        if (cA !== cB) return cA - cB;
-        return (a.collector_number ?? 999999) - (b.collector_number ?? 999999);
-      });
-    case "color_price_desc":
-      return list.sort((a, b) => {
-        const cA = a.color_order ?? 7;
-        const cB = b.color_order ?? 7;
-        if (cA !== cB) return cA - cB;
+        if (cA !== cB) return item.direction === "asc" ? cA - cB : cB - cA;
+      } else if (item.id === "price") {
         const pA = parseFloat(a.condition_values?.nm_price || a.price_retail) || 0;
         const pB = parseFloat(b.condition_values?.nm_price || b.price_retail) || 0;
-        return pB - pA;
-      });
-    case "color_price_asc":
-      return list.sort((a, b) => {
-        const cA = a.color_order ?? 7;
-        const cB = b.color_order ?? 7;
-        if (cA !== cB) return cA - cB;
-        const pA = parseFloat(a.condition_values?.nm_price || a.price_retail) || 0;
-        const pB = parseFloat(b.condition_values?.nm_price || b.price_retail) || 0;
-        return pA - pB;
-      });
-    case "color_number_asc":
-      return list.sort((a, b) => {
-        const cA = a.color_order ?? 7;
-        const cB = b.color_order ?? 7;
-        if (cA !== cB) return cA - cB;
-        return (a.collector_number ?? 999999) - (b.collector_number ?? 999999);
-      });
-    case "number_asc":
-      return list.sort((a, b) => (a.collector_number ?? 999999) - (b.collector_number ?? 999999));
-    case "number_desc":
-      return list.sort((a, b) => (b.collector_number ?? 999999) - (a.collector_number ?? 999999));
-    case "number_price_desc":
-      return list.sort((a, b) => {
+        if (pA !== pB) return item.direction === "desc" ? pB - pA : pA - pB;
+      } else if (item.id === "number") {
         const nA = a.collector_number ?? 999999;
         const nB = b.collector_number ?? 999999;
-        if (nA !== nB) return nA - nB;
-        const pA = parseFloat(a.condition_values?.nm_price || a.price_retail) || 0;
-        const pB = parseFloat(b.condition_values?.nm_price || b.price_retail) || 0;
-        return pB - pA;
-      });
-    case "price_desc":
-      return list.sort((a, b) => {
-        const pA = parseFloat(a.condition_values?.nm_price || a.price_retail) || 0;
-        const pB = parseFloat(b.condition_values?.nm_price || b.price_retail) || 0;
-        return pB - pA;
-      });
-    case "price_asc":
-      return list.sort((a, b) => {
-        const pA = parseFloat(a.condition_values?.nm_price || a.price_retail) || 0;
-        const pB = parseFloat(b.condition_values?.nm_price || b.price_retail) || 0;
-        return pA - pB;
-      });
-    case "name_asc":
-      return list.sort((a, b) => a.name.localeCompare(b.name));
-    default:
-      return list;
-  }
+        if (nA !== nB) return item.direction === "asc" ? nA - nB : nB - nA;
+      } else if (item.id === "name") {
+        const cmp = a.name.localeCompare(b.name);
+        if (cmp !== 0) return item.direction === "asc" ? cmp : -cmp;
+      }
+    }
+    return a.name.localeCompare(b.name);
+  });
 }
 
 interface PrintStudioModalProps {
@@ -2633,37 +2953,14 @@ function PrintStudioModal({
               </div>
 
               {printCardsList.length > 0 && setPrintSort && (
-                <div className="space-y-1.5 pt-1 pb-1 border-b border-white/[0.06]">
-                  <div className="flex items-center justify-between text-[11px] text-slate-300">
-                    <span className="flex items-center gap-1.5 font-semibold">
-                      <ArrowUpDown className="w-3.5 h-3.5 text-amber-400" />
-                      <span>Print Order on Sheets</span>
-                    </span>
-                    {printSort.includes("color") && (
-                      <span className="text-[10px] text-amber-400 font-mono font-medium">WUBRG</span>
-                    )}
-                  </div>
-                  <select
-                    value={printSort}
-                    onChange={(e) => setPrintSort(e.target.value)}
-                    className="w-full bg-[#090b12] border border-white/[0.08] rounded-xl px-2.5 py-1.5 text-xs text-slate-200 outline-none focus:border-amber-400/60 cursor-pointer"
-                  >
-                    <option value="added">As Added (Selection Order)</option>
-                    <optgroup label="Single Sort" className="bg-[#12141f] text-slate-400 font-semibold">
-                      <option value="color_asc" className="text-slate-200">Color: WUBRG (White to Land)</option>
-                      <option value="number_asc" className="text-slate-200">Collector Number: 1 to 999</option>
-                      <option value="number_desc" className="text-slate-200">Collector Number: 999 to 1</option>
-                      <option value="price_desc" className="text-slate-200">Price: High to Low</option>
-                      <option value="price_asc" className="text-slate-200">Price: Low to High</option>
-                      <option value="name_asc" className="text-slate-200">Card Name: A to Z</option>
-                    </optgroup>
-                    <optgroup label="Multi-Sort (Combined)" className="bg-[#12141f] text-slate-400 font-semibold">
-                      <option value="color_price_desc" className="text-slate-200">Color then Price: High to Low</option>
-                      <option value="color_price_asc" className="text-slate-200">Color then Price: Low to High</option>
-                      <option value="color_number_asc" className="text-slate-200">Color then Collector Number</option>
-                      <option value="number_price_desc" className="text-slate-200">Collector Number then Price: High to Low</option>
-                    </optgroup>
-                  </select>
+                <div className="pt-1 pb-1 border-b border-white/[0.06]">
+                  <DynamicMultiSortControl
+                    sortBy={printSort}
+                    onChange={(newSort) => setPrintSort(newSort)}
+                    onReset={() => setPrintSort("added")}
+                    title="Print Order on Sheets"
+                    allowSelectionOrder={true}
+                  />
                 </div>
               )}
 
