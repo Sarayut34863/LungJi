@@ -15,6 +15,7 @@ export async function GET(request: NextRequest) {
     const foil = (searchParams.get("foil") as SearchParams["foil"]) || "all";
     const rarity = (searchParams.get("rarity") as SearchParams["rarity"]) || "all";
     const color = searchParams.get("color") || undefined;
+    const colorMode = (searchParams.get("colorMode") as SearchParams["colorMode"]) || "exact";
     const inStock = searchParams.get("inStock") === "true";
     const minPriceParam = searchParams.get("minPrice");
     const maxPriceParam = searchParams.get("maxPrice");
@@ -30,6 +31,7 @@ export async function GET(request: NextRequest) {
       foil,
       rarity,
       color,
+      colorMode,
       inStock,
       minPrice,
       maxPrice,

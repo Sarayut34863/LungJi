@@ -141,13 +141,6 @@ export const COLOR_OPTIONS = [
     inactiveClass: "text-emerald-400/70 hover:text-emerald-400 hover:bg-white/[0.03]",
   },
   {
-    code: "M",
-    label: "Multicolor",
-    short: "M",
-    activeClass: "bg-amber-400/20 text-amber-300 border-amber-400/40 ring-1 ring-amber-400/20",
-    inactiveClass: "text-amber-400/70 hover:text-amber-300 hover:bg-white/[0.03]",
-  },
-  {
     code: "C",
     label: "Colorless",
     short: "C",
@@ -162,6 +155,30 @@ export const COLOR_OPTIONS = [
     inactiveClass: "text-stone-400/70 hover:text-stone-300 hover:bg-white/[0.03]",
   },
 ];
+
+export const MTG_COLOR_COMBOS: Record<string, string> = {
+  WU: "Azorius (WU)",
+  UB: "Dimir (UB)",
+  BR: "Rakdos (BR)",
+  RG: "Gruul (RG)",
+  GW: "Selesnya (GW)",
+  WB: "Orzhov (WB)",
+  BG: "Golgari (BG)",
+  GU: "Simic (GU)",
+  UR: "Izzet (UR)",
+  RW: "Boros (RW)",
+  GWU: "Bant (GWU)",
+  WUB: "Esper (WUB)",
+  UBR: "Grixis (UBR)",
+  BRG: "Jund (BRG)",
+  RGW: "Naya (RGW)",
+  WBG: "Abzan (WBG)",
+  URW: "Jeskai (URW)",
+  BGU: "Sultai (BGU)",
+  WBR: "Mardu (WBR)",
+  GUR: "Temur (GUR)",
+  WUBRG: "5-Color (WUBRG)",
+};
 
 export function parseSortStringToItems(sortStr: string): ActiveSortItem[] {
   if (!sortStr) return [{ id: "price", direction: "desc" }];
@@ -929,6 +946,7 @@ export default function HomePage() {
   const [foilFilter, setFoilFilter] = useState<"all" | "foil" | "nonfoil">("all");
   const [selectedRarities, setSelectedRarities] = useState<string[]>([]);
   const [selectedColors, setSelectedColors] = useState<string[]>([]);
+  const [colorMode, setColorMode] = useState<"exact" | "any">("exact");
   const [sortBy, setSortBy] = useState<string>("price_desc");
   const [rowsPerPage, setRowsPerPage] = useState<number>(24);
   const [currentPage, setCurrentPage] = useState<number>(1);
@@ -1107,7 +1125,7 @@ export default function HomePage() {
       const colorParam = selectedColors.length === 0 ? "all" : selectedColors.join(",");
       const minPriceQuery = debouncedMin > 0 ? String(debouncedMin) : "";
       const maxPriceQuery = debouncedMax < 100 ? String(debouncedMax) : "";
-      const cacheKey = `${selectedEdition}|${debouncedQuery}|${foilFilter}|${rarityParam}|${colorParam}|${minPriceQuery}|${maxPriceQuery}|${sortBy}|${currentPage}|${rowsPerPage}`;
+      const cacheKey = `${selectedEdition}|${debouncedQuery}|${foilFilter}|${rarityParam}|${colorParam}|${colorMode}|${minPriceQuery}|${maxPriceQuery}|${sortBy}|${currentPage}|${rowsPerPage}`;
 
       // Check cache first (0ms instant response)
       const cached = queryCacheRef.current.get(cacheKey);
@@ -1138,7 +1156,12 @@ export default function HomePage() {
           page: String(currentPage),
           limit: String(rowsPerPage),
         });
-        if (colorParam !== "all") params.set("color", colorParam);
+        if (colorParam !== "all") {
+          params.set("color", colorParam);
+          if (selectedColors.length > 1) {
+            params.set("colorMode", colorMode);
+          }
+        }
         if (minPriceQuery) params.set("minPrice", minPriceQuery);
         if (maxPriceQuery) params.set("maxPrice", maxPriceQuery);
 
@@ -1176,7 +1199,7 @@ export default function HomePage() {
         }
       }
     },
-    [selectedEdition, debouncedQuery, foilFilter, selectedRarities, selectedColors, debouncedMin, debouncedMax, sortBy, currentPage, rowsPerPage]
+    [selectedEdition, debouncedQuery, foilFilter, selectedRarities, selectedColors, colorMode, debouncedMin, debouncedMax, sortBy, currentPage, rowsPerPage]
   );
 
   useEffect(() => {
@@ -1193,7 +1216,7 @@ export default function HomePage() {
       const colorParam = selectedColors.length === 0 ? "all" : selectedColors.join(",");
       const minPriceQuery = debouncedMin > 0 ? String(debouncedMin) : "";
       const maxPriceQuery = debouncedMax < 100 ? String(debouncedMax) : "";
-      const nextKey = `${selectedEdition}|${debouncedQuery}|${foilFilter}|${rarityParam}|${colorParam}|${minPriceQuery}|${maxPriceQuery}|${sortBy}|${nextPage}|${rowsPerPage}`;
+      const nextKey = `${selectedEdition}|${debouncedQuery}|${foilFilter}|${rarityParam}|${colorParam}|${colorMode}|${minPriceQuery}|${maxPriceQuery}|${sortBy}|${nextPage}|${rowsPerPage}`;
 
       if (!queryCacheRef.current.has(nextKey)) {
         const params = new URLSearchParams({
@@ -1205,7 +1228,12 @@ export default function HomePage() {
           page: String(nextPage),
           limit: String(rowsPerPage),
         });
-        if (colorParam !== "all") params.set("color", colorParam);
+        if (colorParam !== "all") {
+          params.set("color", colorParam);
+          if (selectedColors.length > 1) {
+            params.set("colorMode", colorMode);
+          }
+        }
         if (minPriceQuery) params.set("minPrice", minPriceQuery);
         if (maxPriceQuery) params.set("maxPrice", maxPriceQuery);
 
@@ -1227,7 +1255,7 @@ export default function HomePage() {
     }, 1500);
 
     return () => clearTimeout(prefetchTimer);
-  }, [currentPage, totalPages, isLoading, cards.length, selectedEdition, debouncedQuery, foilFilter, selectedRarities, selectedColors, debouncedMin, debouncedMax, sortBy, rowsPerPage]);
+  }, [currentPage, totalPages, isLoading, cards.length, selectedEdition, debouncedQuery, foilFilter, selectedRarities, selectedColors, colorMode, debouncedMin, debouncedMax, sortBy, rowsPerPage]);
 
   // Auto-sync data in the background every 30 minutes
   useEffect(() => {
@@ -1245,6 +1273,7 @@ export default function HomePage() {
     setFoilFilter("all");
     setSelectedRarities([]);
     setSelectedColors([]);
+    setColorMode("exact");
     setSliderMin(0);
     setSliderMax(100);
     setDebouncedMin(0);
@@ -1300,6 +1329,7 @@ export default function HomePage() {
     foilFilter,
     selectedRarities,
     selectedColors,
+    colorMode,
     debouncedMin,
     debouncedMax,
     sortBy,
@@ -1553,10 +1583,29 @@ export default function HomePage() {
                 </div>
               </div>
 
-              {/* Color Filter (Multi-select) */}
+              {/* Color Filter (Multi-select & Mixture) */}
               <div className="space-y-1.5 border-b border-white/[0.06] pb-3.5">
                 <div className="flex items-center justify-between">
-                  <label className="text-xs font-semibold text-slate-200">Color</label>
+                  <div className="flex items-center gap-1.5">
+                    <label className="text-xs font-semibold text-slate-200">Color</label>
+                    {selectedColors.length >= 2 && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setColorMode((prev) => (prev === "exact" ? "any" : "exact"));
+                          setCurrentPage(1);
+                        }}
+                        className="text-[9px] px-1.5 py-0.5 rounded font-mono font-medium border transition cursor-pointer bg-amber-400/10 hover:bg-amber-400/20 text-amber-300 border-amber-400/30"
+                        title={
+                          colorMode === "exact"
+                            ? "Current: Exact Mixture (ผสมสี) - Click to match Any"
+                            : "Current: Any color - Click to match Exact Mixture"
+                        }
+                      >
+                        {colorMode === "exact" ? "Mix (ผสม)" : "Any (รวม)"}
+                      </button>
+                    )}
+                  </div>
                   {selectedColors.length > 0 && (
                     <button
                       onClick={() => {
@@ -1570,14 +1619,14 @@ export default function HomePage() {
                     </button>
                   )}
                 </div>
-                <div className="grid grid-cols-9 gap-0.5 sm:gap-1 bg-[#0b0d14] p-1 rounded-lg border border-white/[0.06]">
+                <div className="grid grid-cols-8 gap-1 bg-[#0b0d14] p-1 rounded-lg border border-white/[0.06]">
                   <button
                     type="button"
                     onClick={() => {
                       setSelectedColors([]);
                       setCurrentPage(1);
                     }}
-                    className={`py-1.5 text-[11px] sm:text-xs font-medium rounded-md transition text-center cursor-pointer ${
+                    className={`py-1.5 text-xs font-medium rounded-md transition text-center cursor-pointer ${
                       selectedColors.length === 0
                         ? "bg-white/[0.08] text-white font-semibold border border-white/[0.08]"
                         : "text-slate-400 hover:text-slate-200"
@@ -1603,6 +1652,18 @@ export default function HomePage() {
                     );
                   })}
                 </div>
+                {selectedColors.length >= 2 && (
+                  <div className="text-[10px] text-amber-300/80 font-mono px-1 truncate">
+                    {(() => {
+                      const WUBRG_ORDER: Record<string, number> = { W: 0, U: 1, B: 2, R: 3, G: 4 };
+                      const mana = selectedColors.filter((c) => ["W", "U", "B", "R", "G"].includes(c));
+                      mana.sort((a, b) => (WUBRG_ORDER[a] ?? 9) - (WUBRG_ORDER[b] ?? 9));
+                      const combo = mana.join("");
+                      const comboName = MTG_COLOR_COMBOS[combo] || combo || selectedColors.join("");
+                      return colorMode === "exact" ? `Mix: ${comboName}` : `Including: ${selectedColors.join(", ")}`;
+                    })()}
+                  </div>
+                )}
               </div>
 
               {/* Foil / Finish Filter */}
@@ -1778,8 +1839,29 @@ export default function HomePage() {
                         <X className="w-3 h-3 opacity-60 group-hover:opacity-100 shrink-0" />
                       </button>
                     ))}
-                  {selectedColors.length > 0 &&
-                    selectedColors.map((c) => {
+                  {selectedColors.length > 0 && (() => {
+                    if (selectedColors.length >= 2 && colorMode === "exact") {
+                      const WUBRG_ORDER: Record<string, number> = { W: 0, U: 1, B: 2, R: 3, G: 4 };
+                      const mana = selectedColors.filter((c) => ["W", "U", "B", "R", "G"].includes(c));
+                      mana.sort((a, b) => (WUBRG_ORDER[a] ?? 9) - (WUBRG_ORDER[b] ?? 9));
+                      const combo = mana.join("");
+                      const comboName = MTG_COLOR_COMBOS[combo] || combo || selectedColors.join("");
+                      return (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedColors([]);
+                            setCurrentPage(1);
+                          }}
+                          className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md border text-[11px] font-semibold bg-amber-400/15 text-amber-300 border-amber-400/35 transition group cursor-pointer"
+                          title="Clear mixed color filter"
+                        >
+                          <span>Mix: {comboName}</span>
+                          <X className="w-3 h-3 opacity-60 group-hover:opacity-100 shrink-0" />
+                        </button>
+                      );
+                    }
+                    return selectedColors.map((c) => {
                       const opt = COLOR_OPTIONS.find((o) => o.code === c);
                       return (
                         <button
@@ -1797,8 +1879,6 @@ export default function HomePage() {
                               ? "bg-red-500/15 text-red-400 border-red-400/30"
                               : c === "G"
                               ? "bg-emerald-500/15 text-emerald-400 border-emerald-400/30"
-                              : c === "M"
-                              ? "bg-amber-400/15 text-amber-300 border-amber-400/30"
                               : c === "C"
                               ? "bg-slate-500/15 text-slate-300 border-slate-400/30"
                               : "bg-stone-700/30 text-stone-200 border-stone-500/40"
@@ -1809,7 +1889,8 @@ export default function HomePage() {
                           <X className="w-3 h-3 opacity-60 group-hover:opacity-100 shrink-0" />
                         </button>
                       );
-                    })}
+                    });
+                  })()}
                   {(sliderMin > 0 || sliderMax < 100) && (
                     <button
                       type="button"

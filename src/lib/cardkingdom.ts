@@ -52,6 +52,7 @@ export interface SearchParams {
   foil?: "all" | "foil" | "nonfoil";
   rarity?: string;
   color?: string;
+  colorMode?: "exact" | "any";
   inStock?: boolean;
   minPrice?: number;
   maxPrice?: number;
@@ -225,6 +226,7 @@ export async function searchCards(params: SearchParams) {
     foil = "all",
     rarity = "all",
     color = "all",
+    colorMode = "exact",
     inStock = false,
     minPrice,
     maxPrice,
@@ -258,10 +260,52 @@ export async function searchCards(params: SearchParams) {
   }
 
   if (color && color !== "all") {
-    const cList = color.split(",").map((c) => c.trim().toUpperCase()).filter(Boolean);
-    if (cList.length > 0 && !cList.includes("ALL")) {
-      where.push(`color IN (${cList.map(() => "?").join(",")})`);
-      binds.push(...cList);
+    const rawTokens = color.split(",").map((c) => c.trim().toUpperCase()).filter(Boolean);
+    const WUBRG = ["W", "U", "B", "R", "G"];
+    const WUBRG_ORDER: Record<string, number> = { W: 0, U: 1, B: 2, R: 3, G: 4 };
+
+    const manaColors: string[] = [];
+    const specialColors: string[] = [];
+
+    for (const tok of rawTokens) {
+      if (tok === "C" || tok === "L") {
+        if (!specialColors.includes(tok)) specialColors.push(tok);
+      } else if (tok.length === 1 && WUBRG.includes(tok)) {
+        if (!manaColors.includes(tok)) manaColors.push(tok);
+      } else if (tok.length > 1) {
+        for (const ch of tok) {
+          if (WUBRG.includes(ch) && !manaColors.includes(ch)) {
+            manaColors.push(ch);
+          }
+        }
+      }
+    }
+
+    manaColors.sort((a, b) => (WUBRG_ORDER[a] ?? 9) - (WUBRG_ORDER[b] ?? 9));
+    const combo = manaColors.join("");
+
+    if (manaColors.length > 0 && specialColors.length === 0) {
+      if (manaColors.length === 1) {
+        where.push("color = ?");
+        binds.push(manaColors[0]);
+      } else {
+        // Multi-color mixture (ผสมสี e.g. WU, UBR, WUBRG)
+        if (colorMode === "any") {
+          const targets = [...manaColors, combo];
+          where.push(`color IN (${targets.map(() => "?").join(",")})`);
+          binds.push(...targets);
+        } else {
+          where.push("color = ?");
+          binds.push(combo);
+        }
+      }
+    } else if (specialColors.length > 0 && manaColors.length === 0) {
+      where.push(`color IN (${specialColors.map(() => "?").join(",")})`);
+      binds.push(...specialColors);
+    } else if (manaColors.length > 0 && specialColors.length > 0) {
+      const targets = manaColors.length === 1 ? [manaColors[0], ...specialColors] : [combo, ...specialColors];
+      where.push(`color IN (${targets.map(() => "?").join(",")})`);
+      binds.push(...targets);
     }
   }
 
