@@ -263,10 +263,7 @@ export function ArchidektExportModal({
               <div className="w-12 h-12 rounded-2xl bg-amber-400/10 border border-amber-400/25 flex items-center justify-center text-amber-400 mb-3 shadow-inner">
                 <CheckSquare className="w-6 h-6" />
               </div>
-              <h3 className="text-sm font-bold text-white mb-1">ยังไม่ได้เลือกการ์ด</h3>
-              <p className="text-xs text-slate-400 max-w-sm mb-4 leading-relaxed">
-                กรุณากดปุ่ม <strong className="text-amber-300 font-semibold">&quot;เลือกทั้งหมด&quot;</strong> เพื่อนำการ์ดเข้าลิสต์ Export ไปยัง Archidekt
-              </p>
+              <h3 className="text-sm font-bold text-white mb-4">ยังไม่ได้เลือกการ์ด</h3>
               <div className="flex flex-wrap items-center justify-center gap-2">
                 {currentCards.length > 0 && onToggleSelectAll && (
                   <button
@@ -351,7 +348,7 @@ export function ArchidektExportModal({
               ) : (
                 <>
                   <Copy className="w-4 h-4" />
-                  <span>คัดลอกลิสต์ (Copy)</span>
+                  <span>คัดลอกลิสต์</span>
                 </>
               )}
             </button>
