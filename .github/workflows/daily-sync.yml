@@ -34,8 +34,7 @@ jobs:
           commit_message: "chore(prices): automated daily Card Kingdom price sync"
           file_pattern: "src/data/cards.db"
 
-      - name: Deploy to Vercel (if VERCEL_TOKEN configured)
-        if: ${{ secrets.VERCEL_TOKEN != '' }}
+      - name: Deploy to Vercel
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
