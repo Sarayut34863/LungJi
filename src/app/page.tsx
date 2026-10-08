@@ -977,6 +977,24 @@ export default function HomePage() {
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [isDrawerOpen, setIsDrawerOpen] = useState<boolean>(false);
   const [isHovered, setIsHovered] = useState<boolean>(false);
+  const drawerRef = useRef<HTMLElement>(null);
+
+  // Close drawer on tap/click outside (for iPad and touch screens) without dimming the screen
+  useEffect(() => {
+    if (!isDrawerOpen) return;
+    const handlePointerDown = (e: MouseEvent | TouchEvent) => {
+      if (drawerRef.current && !drawerRef.current.contains(e.target as Node)) {
+        setIsDrawerOpen(false);
+        setIsHovered(false);
+      }
+    };
+    document.addEventListener("mousedown", handlePointerDown);
+    document.addEventListener("touchstart", handlePointerDown);
+    return () => {
+      document.removeEventListener("mousedown", handlePointerDown);
+      document.removeEventListener("touchstart", handlePointerDown);
+    };
+  }, [isDrawerOpen]);
 
   // THB Currency Multiplier state (defaults to 35 THB/$, user-customizable)
   const [thbMultiplier, setThbMultiplier] = useState<number>(35);
@@ -1596,20 +1614,10 @@ export default function HomePage() {
             </button>
           </div>
 
-          {/* Backdrop on touch / click open (tap outside to close drawer) */}
-          {isDrawerOpen && (
-            <div
-              className="fixed inset-0 bg-black/50 backdrop-blur-[2px] z-40 transition-opacity duration-200"
-              onClick={() => {
-                setIsDrawerOpen(false);
-                setIsHovered(false);
-              }}
-            />
-          )}
-
           <div className="relative">
             {/* UNIFIED SLIDE-OUT FILTER DRAWER WITH SEAMLESSLY ATTACHED TAB (Starcitygames style) */}
             <aside
+              ref={drawerRef}
               className={`fixed left-0 z-40 transition-transform duration-300 ease-out w-72 sm:w-80 select-none ${
                 showHeader ? "top-16" : "top-3"
               } ${
@@ -1618,7 +1626,10 @@ export default function HomePage() {
                   : "-translate-x-full"
               }`}
               onMouseEnter={() => setIsHovered(true)}
-              onMouseLeave={() => setIsHovered(false)}
+              onMouseLeave={() => {
+                setIsHovered(false);
+                setIsDrawerOpen(false);
+              }}
             >
               {/* Main Drawer Panel */}
               <div className="w-full h-[calc(100vh-5rem)] bg-[#11131c] border-r border-white/[0.08] shadow-2xl shadow-black/80 flex flex-col rounded-r-2xl overflow-hidden select-text">
