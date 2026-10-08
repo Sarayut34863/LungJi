@@ -18,7 +18,6 @@ import {
 import QRCode from "qrcode";
 import {
   FilterPreset,
-  BUILTIN_PRESETS,
   getSavedPresets,
   savePresetToStorage,
   deletePresetFromStorage,
@@ -75,7 +74,7 @@ export function FilterPresetsModal({
     }
   }, [isOpen]);
 
-  // Combine current filters + saved presets + built-ins
+  // Combine current filters + saved presets
   const allAvailablePresets = useMemo(() => {
     const currentOption: FilterPreset = {
       id: "current",
@@ -83,7 +82,7 @@ export function FilterPresetsModal({
       createdAt: Date.now(),
       ...currentFilters,
     };
-    return [currentOption, ...savedPresets, ...BUILTIN_PRESETS];
+    return [currentOption, ...savedPresets];
   }, [currentFilters, savedPresets]);
 
   // The active preset to sync or encode
@@ -291,12 +290,12 @@ export function FilterPresetsModal({
               )}
 
               {/* Saved User Presets */}
-              {savedPresets.length > 0 && (
+              {savedPresets.length > 0 ? (
                 <div className="space-y-2">
                   <div className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
-                    My Presets
+                    My Presets ({savedPresets.length})
                   </div>
-                  <div className="space-y-1.5">
+                  <div className="space-y-1.5 max-h-[360px] overflow-y-auto pr-1">
                     {savedPresets.map((preset) => (
                       <div
                         key={preset.id}
@@ -349,57 +348,17 @@ export function FilterPresetsModal({
                     ))}
                   </div>
                 </div>
+              ) : (
+                <div className="py-12 text-center space-y-2 border border-dashed border-white/[0.08] rounded-2xl bg-white/[0.01]">
+                  <div className="w-9 h-9 rounded-full bg-white/[0.04] text-slate-400 flex items-center justify-center mx-auto">
+                    <Bookmark className="w-4 h-4" />
+                  </div>
+                  <div className="text-xs font-medium text-slate-300">ยังไม่มีพรีเซ็ตที่บันทึกไว้</div>
+                  <div className="text-[11px] text-slate-500 max-w-xs mx-auto">
+                    ปรับฟิลเตอร์ที่ต้องการแล้วกด &quot;Save Current Filter Preset&quot; ด้านบนเพื่อบันทึก
+                  </div>
+                </div>
               )}
-
-              {/* Standard Built-in Presets */}
-              <div className="space-y-2.5 pt-1">
-                <div className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
-                  Standard Presets
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {BUILTIN_PRESETS.map((bp) => (
-                    <div
-                      key={bp.id}
-                      className="p-3.5 rounded-xl bg-white/[0.02] border border-white/[0.06] hover:border-amber-400/40 text-left transition group flex items-start justify-between"
-                    >
-                      <button
-                        type="button"
-                        onClick={() => handleApply(bp, bp.name)}
-                        className="flex-1 text-left cursor-pointer"
-                      >
-                        <div className="text-xs sm:text-sm font-semibold text-slate-200 group-hover:text-amber-300 transition">
-                          {bp.name}
-                        </div>
-                        <div className="text-xs text-slate-400 mt-1">
-                          {bp.id === "all" && "Clear all filters"}
-                          {bp.id === "high_rares" && "Rare & Mythic cards"}
-                          {bp.id === "multicolor" && "2+ colors cards"}
-                          {bp.id === "foils" && "Foil versions only"}
-                          {bp.id === "budget" && "Under $2 / ~70฿"}
-                        </div>
-                      </button>
-                      <div className="flex items-center gap-1 opacity-60 group-hover:opacity-100 transition pt-0.5">
-                        <button
-                          type="button"
-                          onClick={() => handleOpenQrForPreset(bp.id)}
-                          className="p-1.5 rounded-md text-slate-400 hover:text-amber-400 hover:bg-white/[0.06] transition cursor-pointer"
-                          title="QR for this preset"
-                        >
-                          <QrCode className="w-3.5 h-3.5" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleOpenCodeForPreset(bp.id)}
-                          className="p-1.5 rounded-md text-slate-400 hover:text-amber-400 hover:bg-white/[0.06] transition cursor-pointer"
-                          title="Code for this preset"
-                        >
-                          <Share2 className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
             </div>
           )}
 
@@ -428,11 +387,6 @@ export function FilterPresetsModal({
                         ))}
                       </optgroup>
                     )}
-                    <optgroup label="Standard Presets">
-                      {BUILTIN_PRESETS.map((bp) => (
-                        <option key={bp.id} value={bp.id}>{bp.name}</option>
-                      ))}
-                    </optgroup>
                   </select>
                   <ChevronDown className="w-4 h-4 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                 </div>
@@ -491,11 +445,6 @@ export function FilterPresetsModal({
                         ))}
                       </optgroup>
                     )}
-                    <optgroup label="Standard Presets">
-                      {BUILTIN_PRESETS.map((bp) => (
-                        <option key={bp.id} value={bp.id}>{bp.name}</option>
-                      ))}
-                    </optgroup>
                   </select>
                   <ChevronDown className="w-4 h-4 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                 </div>
