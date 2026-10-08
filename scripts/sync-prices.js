@@ -7,6 +7,7 @@ const path = require('path');
 const dbPath = path.join(__dirname, '..', 'src', 'data', 'cards.db');
 const rarityPath = path.join(__dirname, '..', 'src', 'data', 'rarity-map.json');
 const colorMapPath = path.join(__dirname, '..', 'src', 'data', 'color-map.json');
+const typeMapPath = path.join(__dirname, '..', 'src', 'data', 'type-map.json');
 
 function getCollectorNumber(sku) {
   if (!sku) return 999999;
@@ -97,6 +98,13 @@ async function run() {
     } catch {}
   }
 
+  let typeMap = {};
+  if (fs.existsSync(typeMapPath)) {
+    try {
+      typeMap = JSON.parse(fs.readFileSync(typeMapPath, 'utf8'));
+    } catch {}
+  }
+
   console.log("Opening SQLite database:", dbPath);
   const db = new DatabaseSync(dbPath);
 
@@ -117,8 +125,8 @@ async function run() {
     INSERT INTO cards (
       id, sku, scryfall_id, name, clean_name, edition, variation,
       is_foil, rarity, price_retail, qty_retail, price_buy, qty_buying, url, condition_values,
-      collector_number, color, color_order
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      collector_number, color, color_order, type_line
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
 
   const insertFtsStmt = db.prepare(`
@@ -175,7 +183,8 @@ async function run() {
         condJson,
         colNum,
         colorData.color || 'C',
-        colorData.order || 7
+        colorData.order || 7,
+        typeMap[(card.name || '').toLowerCase().trim()] || null
       );
 
       try {

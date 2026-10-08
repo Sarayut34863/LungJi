@@ -33,6 +33,7 @@ export interface CKCard {
   collector_number?: number;
   color?: string;
   color_order?: number;
+  type_line?: string;
 }
 
 import editionCodesData from "@/data/edition-codes.json";
@@ -349,14 +350,37 @@ export async function searchCards(params: SearchParams) {
   }
 
   if (search && search.trim() !== "") {
-    const ftsQ = escapeFTS5(search);
-    if (ftsQ) {
-      where.push("id IN (SELECT rowid FROM cards_fts WHERE cards_fts MATCH ?)");
-      binds.push(ftsQ);
-    } else {
-      const q = `%${search.trim()}%`;
-      where.push("(clean_name LIKE ? OR sku LIKE ?)");
-      binds.push(q, q);
+    let cleanSearch = search.trim();
+
+    // Parse Archidekt / Scryfall syntax for types: t:dinosaur or type:"legendary creature"
+    const typeRegex = /(?:t|type):(?:"([^"]+)"|'([^']+)'|([^\s]+))/gi;
+    const typeFilters: string[] = [];
+    let match: RegExpExecArray | null;
+
+    while ((match = typeRegex.exec(cleanSearch)) !== null) {
+      const term = (match[1] || match[2] || match[3] || "").trim();
+      if (term) {
+        typeFilters.push(term);
+      }
+    }
+
+    cleanSearch = cleanSearch.replace(typeRegex, "").trim();
+
+    for (const tTerm of typeFilters) {
+      where.push("type_line LIKE ?");
+      binds.push(`%${tTerm}%`);
+    }
+
+    if (cleanSearch !== "") {
+      const ftsQ = escapeFTS5(cleanSearch);
+      if (ftsQ) {
+        where.push("id IN (SELECT rowid FROM cards_fts WHERE cards_fts MATCH ?)");
+        binds.push(ftsQ);
+      } else {
+        const q = `%${cleanSearch}%`;
+        where.push("(clean_name LIKE ? OR sku LIKE ?)");
+        binds.push(q, q);
+      }
     }
   }
 
@@ -482,6 +506,7 @@ export async function searchCards(params: SearchParams) {
     collector_number: number | null;
     color: string | null;
     color_order: number | null;
+    type_line: string | null;
   }[];
 
   const cards: CKCard[] = rows.map((r) => {
@@ -509,6 +534,7 @@ export async function searchCards(params: SearchParams) {
       collector_number: typeof r.collector_number === "number" && r.collector_number < 900000 ? r.collector_number : undefined,
       color: r.color || undefined,
       color_order: typeof r.color_order === "number" ? r.color_order : undefined,
+      type_line: r.type_line || undefined,
     };
   });
 
@@ -534,4 +560,48 @@ export async function fetchCKData(forceRefresh = false) {
     searchCache.clear();
   }
   return getEditions();
+}
+
+export function formatArchidektCard(
+  card: CKCard,
+  options?: {
+    quantity?: number;
+    useStockQty?: boolean;
+    includeCollectorNumber?: boolean;
+  }
+): string {
+  const isFoil = card.is_foil === "true" || card.is_foil === true || String(card.is_foil) === "1";
+
+  // Set code lookup
+  let code = editionCodes[card.edition] || "";
+  if (!code && card.sku) {
+    const rawPrefix = card.sku.split("-")[0] || "";
+    code = rawPrefix.replace(/^F/i, "");
+  }
+  const cleanCode = code ? code.toLowerCase().trim() : "";
+
+  // Quantity determination
+  let qty = options?.quantity ?? 1;
+  if (options?.useStockQty && typeof card.qty_retail === "number" && card.qty_retail > 0) {
+    qty = card.qty_retail;
+  }
+
+  // Collector number (optional or included if available)
+  let colNum = "";
+  if (options?.includeCollectorNumber) {
+    if (typeof card.collector_number === "number" && card.collector_number < 900000) {
+      colNum = ` ${card.collector_number}`;
+    } else if (card.sku && card.sku.includes("-")) {
+      const parts = card.sku.split("-");
+      const numPart = parseInt(parts.slice(1).join("-"), 10);
+      if (!isNaN(numPart) && numPart < 900000) {
+        colNum = ` ${numPart}`;
+      }
+    }
+  }
+
+  const foilTag = isFoil ? " F" : "";
+  const setTag = cleanCode ? ` (${cleanCode})` : "";
+
+  return `${qty}x ${card.name}${setTag}${colNum}${foilTag}`;
 }

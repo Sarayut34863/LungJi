@@ -36,9 +36,12 @@ import {
   Share2,
   PanelLeftClose,
   PanelLeftOpen,
+  CheckSquare,
+  FileDown,
 } from "lucide-react";
 import { CKCard, EditionSummary } from "@/lib/cardkingdom";
 import { FilterPresetsModal } from "@/components/FilterPresetsModal";
+import { ArchidektExportModal } from "@/components/ArchidektExportModal";
 import { FilterPreset, syncFiltersToUrl, parseFiltersFromUrl } from "@/lib/presets";
 
 // Official Card Kingdom Castle Rook Icon (Archidekt / Card Kingdom Brand Icon)
@@ -1109,6 +1112,31 @@ export default function HomePage() {
     setSelectedCards({});
   }, []);
 
+  const [isArchidektModalOpen, setIsArchidektModalOpen] = useState<boolean>(false);
+
+  const isAllPageSelected = useMemo(() => {
+    if (cards.length === 0) return false;
+    return cards.every((c) => !!selectedCards[`${c.id}-${c.sku}`]);
+  }, [cards, selectedCards]);
+
+  const handleToggleSelectPage = useCallback(() => {
+    setSelectedCards((prev) => {
+      const copy = { ...prev };
+      if (isAllPageSelected) {
+        cards.forEach((c) => {
+          delete copy[`${c.id}-${c.sku}`];
+        });
+      } else {
+        cards.forEach((c) => {
+          const key = `${c.id}-${c.sku}`;
+          const defaultQty = typeof c.qty_retail === "number" && c.qty_retail > 0 ? c.qty_retail : 1;
+          copy[key] = { card: c, quantity: defaultQty };
+        });
+      }
+      return copy;
+    });
+  }, [cards, isAllPageSelected]);
+
   // Search debounce
   const [debouncedQuery, setDebouncedQuery] = useState<string>("");
   useEffect(() => {
@@ -1540,8 +1568,19 @@ export default function HomePage() {
               </div>
             </button>
 
-            {/* Top Right: Print Studio Button */}
+            {/* Top Right: Export Archidekt & Print Studio Buttons */}
             <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setIsArchidektModalOpen(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-xl text-xs sm:text-sm font-semibold transition active:scale-95 bg-white/[0.05] hover:bg-white/[0.1] text-amber-300 border border-amber-400/30 hover:border-amber-400/50 shadow-md cursor-pointer"
+                title="Export list to Archidekt / Moxfield format"
+              >
+                <FileDown className="w-4 h-4 text-amber-400" />
+                <span className="hidden sm:inline">Export Archidekt</span>
+                <span className="sm:hidden">Export</span>
+              </button>
+
               <button
                 type="button"
                 onClick={() => setIsPrintModalOpen(true)}
@@ -1575,7 +1614,7 @@ export default function HomePage() {
               <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
               <input
                 type="text"
-                placeholder="Search card name..."
+                placeholder="Search name, t:dinosaur, t:land..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full bg-[#11131c] border border-white/[0.08] rounded-xl pl-9 pr-8 py-2.5 text-xs text-slate-100 placeholder:text-slate-500 outline-none focus:border-amber-400/60"
@@ -1687,13 +1726,16 @@ export default function HomePage() {
                 </button>
               </div>
 
-              {/* Card Name Filter */}
+              {/* Card Name & Type Filter */}
               <div className="space-y-1.5 border-b border-white/[0.06] pb-3.5">
-                <label className="text-xs font-semibold text-slate-200">Card Name</label>
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-semibold text-slate-200">Card Name / Type</label>
+                  <span className="text-[10px] text-amber-400 font-mono">t:dinosaur</span>
+                </div>
                 <div className="relative">
                   <input
                     type="text"
-                    placeholder="Search card name..."
+                    placeholder="Search name, t:dinosaur, t:land..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     className="w-full bg-[#0b0d14] border border-white/[0.08] rounded-lg px-3 py-2 text-xs text-slate-100 placeholder:text-slate-500 outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-400/25 transition"
@@ -1706,6 +1748,9 @@ export default function HomePage() {
                       <X className="w-3.5 h-3.5" />
                     </button>
                   )}
+                </div>
+                <div className="text-[10px] text-slate-500 flex items-center gap-1">
+                  <span>💡 พิมพ์ <code className="text-amber-400 font-mono font-semibold">t:dinosaur</code> หรือ <code className="text-amber-400 font-mono font-semibold">t:land</code> เพื่อกรองเผ่า/ประเภท</span>
                 </div>
               </div>
 
@@ -2150,6 +2195,40 @@ export default function HomePage() {
               <span className="text-slate-400">
                 Found <strong className="font-mono tabular-nums text-white font-semibold">{totalCount.toLocaleString()}</strong> cards
               </span>
+
+              {/* Select All (เลือกทั้งหมด) Button */}
+              {cards.length > 0 && (
+                <button
+                  type="button"
+                  onClick={handleToggleSelectPage}
+                  className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold border transition cursor-pointer ${
+                    isAllPageSelected
+                      ? "bg-amber-400 text-slate-950 border-amber-400 font-bold shadow-sm shadow-amber-500/20"
+                      : "bg-white/[0.05] hover:bg-white/[0.1] border-white/[0.1] text-slate-200 hover:text-white"
+                  }`}
+                  title={
+                    isAllPageSelected
+                      ? "ยกเลิกเลือกการ์ดในหน้านี้ทั้งหมด"
+                      : "เลือกการ์ดทั้งหมดในหน้านี้เข้าคิวตามจำนวนสต็อกร้าน (Auto-Stock Quantity)"
+                  }
+                >
+                  <CheckSquare className={`w-3.5 h-3.5 ${isAllPageSelected ? "text-slate-950" : "text-amber-400"}`} />
+                  <span>{isAllPageSelected ? "Deselect Page" : "Select All (เลือกทั้งหมด)"}</span>
+                </button>
+              )}
+
+              {/* Export to Archidekt Button */}
+              {cards.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setIsArchidektModalOpen(true)}
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-amber-400/10 hover:bg-amber-400/20 border border-amber-400/30 text-amber-300 transition cursor-pointer"
+                  title="Export cards to Archidekt format"
+                >
+                  <FileDown className="w-3.5 h-3.5 text-amber-400" />
+                  <span>Export Archidekt</span>
+                </button>
+              )}
                   {selectedEdition !== "all" && (
                     <button
                       type="button"
@@ -2474,6 +2553,16 @@ export default function HomePage() {
             thbMultiplier={thbMultiplier}
           />
         )}
+
+        {/* Archidekt Export Modal */}
+        <ArchidektExportModal
+          isOpen={isArchidektModalOpen}
+          onClose={() => setIsArchidektModalOpen(false)}
+          selectedCards={selectedCards}
+          currentCards={cards}
+          searchQuery={searchQuery}
+          totalSearchCount={totalCount}
+        />
 
         {/* Filter Presets Modal (Presets Library, Mobile QR Sync, Preset Codes) */}
         <FilterPresetsModal
