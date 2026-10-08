@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import {
   X,
   Bookmark,
@@ -42,6 +42,147 @@ interface FilterPresetsModalProps {
     sortBy?: string;
   };
   onApplyPreset: (preset: Partial<FilterPreset>) => void;
+}
+
+function PresetDropdown({
+  label,
+  selectedPresetId,
+  onSelect,
+  savedPresets,
+  activeTargetPreset,
+}: {
+  label: string;
+  selectedPresetId: string;
+  onSelect: (id: string) => void;
+  savedPresets: FilterPreset[];
+  activeTargetPreset: FilterPreset;
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    }
+    if (isOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [isOpen]);
+
+  return (
+    <div className="space-y-1.5 bg-white/[0.02] p-3 rounded-xl border border-white/[0.06]" ref={dropdownRef}>
+      <label className="text-xs font-medium text-slate-300 flex items-center justify-between">
+        <span>{label}</span>
+        <span className="text-[10px] text-amber-400 font-mono">
+          {activeTargetPreset.name}
+        </span>
+      </label>
+
+      <div className="relative">
+        <button
+          type="button"
+          onClick={() => setIsOpen((prev) => !prev)}
+          className={`w-full bg-[#0a0c12] border rounded-xl px-3 py-2 text-xs font-medium text-slate-100 flex items-center justify-between transition cursor-pointer ${
+            isOpen ? "border-amber-400 ring-1 ring-amber-400/30" : "border-white/[0.1] hover:border-amber-400/40"
+          }`}
+        >
+          <div className="flex items-center gap-2 truncate">
+            {selectedPresetId === "current" ? (
+              <SlidersHorizontal className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+            ) : (
+              <Bookmark className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+            )}
+            <span className="truncate">{activeTargetPreset.name}</span>
+          </div>
+          <ChevronDown
+            className={`w-4 h-4 text-slate-400 shrink-0 transition-transform duration-150 ${
+              isOpen ? "rotate-180 text-amber-400" : ""
+            }`}
+          />
+        </button>
+
+        {isOpen && (
+          <div className="absolute left-0 right-0 top-full mt-1.5 z-30 bg-[#0c0e15] border border-white/[0.12] rounded-xl shadow-2xl overflow-hidden py-1">
+            {/* Option: Current Active Filters */}
+            <div className="px-1">
+              <button
+                type="button"
+                onClick={() => {
+                  onSelect("current");
+                  setIsOpen(false);
+                }}
+                className={`w-full text-left px-2.5 py-2 rounded-lg text-xs flex items-center justify-between transition cursor-pointer ${
+                  selectedPresetId === "current"
+                    ? "bg-amber-400/10 text-amber-300 font-medium"
+                    : "text-slate-200 hover:bg-white/[0.05]"
+                }`}
+              >
+                <div className="flex items-center gap-2 truncate">
+                  <SlidersHorizontal className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                  <span className="truncate">Current Active Filters</span>
+                </div>
+                {selectedPresetId === "current" && (
+                  <Check className="w-3.5 h-3.5 text-amber-400 shrink-0 ml-2" />
+                )}
+              </button>
+            </div>
+
+            {/* Section: My Saved Presets with prominent Amber Color! */}
+            {savedPresets.length > 0 && (
+              <div className="mt-1 pt-1 border-t border-white/[0.06]">
+                <div className="px-3 py-1.5 flex items-center gap-1.5 text-[10px] font-bold text-amber-400 uppercase tracking-wider select-none">
+                  <Bookmark className="w-3 h-3 text-amber-400 shrink-0" />
+                  <span>My Saved Presets</span>
+                  <span className="text-[9px] font-mono text-amber-400/60 font-normal">
+                    ({savedPresets.length})
+                  </span>
+                </div>
+
+                <div className="px-1 space-y-0.5 max-h-48 overflow-y-auto">
+                  {savedPresets.map((p) => {
+                    const isSelected = selectedPresetId === p.id;
+                    return (
+                      <button
+                        key={p.id}
+                        type="button"
+                        onClick={() => {
+                          onSelect(p.id);
+                          setIsOpen(false);
+                        }}
+                        className={`w-full text-left px-2.5 py-2 rounded-lg text-xs flex items-center justify-between transition cursor-pointer ${
+                          isSelected
+                            ? "bg-amber-400/10 text-amber-300 font-medium"
+                            : "text-slate-200 hover:bg-white/[0.05]"
+                        }`}
+                      >
+                        <div className="truncate pr-2">
+                          <div className="truncate font-medium">{p.name}</div>
+                          <div className="text-[10px] text-slate-500 font-mono truncate mt-0.5">
+                            {p.rarities.length > 0 && p.rarities.join(", ")}
+                            {p.colors.length > 0 && ` • ${p.colors.join("")}`}
+                            {p.foil !== "all" && ` • ${p.foil}`}
+                            {(p.minPrice > 0 || p.maxPrice < 100) && ` • $${p.minPrice}-$${p.maxPrice}`}
+                          </div>
+                        </div>
+                        {isSelected && (
+                          <Check className="w-3.5 h-3.5 text-amber-400 shrink-0 ml-1.5" />
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
 }
 
 export function FilterPresetsModal({
@@ -292,8 +433,12 @@ export function FilterPresetsModal({
               {/* Saved User Presets */}
               {savedPresets.length > 0 ? (
                 <div className="space-y-2">
-                  <div className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
-                    My Presets ({savedPresets.length})
+                  <div className="text-[11px] font-bold text-amber-400 uppercase tracking-wider flex items-center gap-1.5">
+                    <Bookmark className="w-3.5 h-3.5 text-amber-400" />
+                    <span>My Saved Presets</span>
+                    <span className="text-[10px] font-mono text-amber-400/60 font-normal">
+                      ({savedPresets.length})
+                    </span>
                   </div>
                   <div className="space-y-1.5 max-h-[360px] overflow-y-auto pr-1">
                     {savedPresets.map((preset) => (
@@ -366,31 +511,13 @@ export function FilterPresetsModal({
           {activeTab === "qr" && (
             <div className="space-y-4">
               {/* Preset Selector Dropdown */}
-              <div className="space-y-1.5 bg-white/[0.02] p-3 rounded-xl border border-white/[0.06]">
-                <label className="text-xs font-medium text-slate-300 flex items-center justify-between">
-                  <span>Select preset to sync:</span>
-                  <span className="text-[10px] text-amber-400 font-mono">
-                    {activeTargetPreset.name}
-                  </span>
-                </label>
-                <div className="relative">
-                  <select
-                    value={selectedPresetId}
-                    onChange={(e) => setSelectedPresetId(e.target.value)}
-                    className="w-full bg-[#0a0c12] border border-white/[0.1] rounded-xl px-3 py-2 text-xs font-medium text-slate-100 outline-none focus:border-amber-400 cursor-pointer appearance-none pr-8"
-                  >
-                    <option value="current">Current Active Filters</option>
-                    {savedPresets.length > 0 && (
-                      <optgroup label="My Saved Presets">
-                        {savedPresets.map((p) => (
-                          <option key={p.id} value={p.id}>{p.name}</option>
-                        ))}
-                      </optgroup>
-                    )}
-                  </select>
-                  <ChevronDown className="w-4 h-4 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-                </div>
-              </div>
+              <PresetDropdown
+                label="Select preset to sync:"
+                selectedPresetId={selectedPresetId}
+                onSelect={setSelectedPresetId}
+                savedPresets={savedPresets}
+                activeTargetPreset={activeTargetPreset}
+              />
 
               {/* QR Code Display Card */}
               <div className="flex flex-col items-center text-center space-y-4 py-2">
@@ -424,31 +551,13 @@ export function FilterPresetsModal({
           {activeTab === "code" && (
             <div className="space-y-4">
               {/* Preset Selector Dropdown */}
-              <div className="space-y-1.5 bg-white/[0.02] p-3 rounded-xl border border-white/[0.06]">
-                <label className="text-xs font-medium text-slate-300 flex items-center justify-between">
-                  <span>Select preset to get code:</span>
-                  <span className="text-[10px] text-amber-400 font-mono">
-                    {activeTargetPreset.name}
-                  </span>
-                </label>
-                <div className="relative">
-                  <select
-                    value={selectedPresetId}
-                    onChange={(e) => setSelectedPresetId(e.target.value)}
-                    className="w-full bg-[#0a0c12] border border-white/[0.1] rounded-xl px-3 py-2 text-xs font-medium text-slate-100 outline-none focus:border-amber-400 cursor-pointer appearance-none pr-8"
-                  >
-                    <option value="current">Current Active Filters</option>
-                    {savedPresets.length > 0 && (
-                      <optgroup label="My Saved Presets">
-                        {savedPresets.map((p) => (
-                          <option key={p.id} value={p.id}>{p.name}</option>
-                        ))}
-                      </optgroup>
-                    )}
-                  </select>
-                  <ChevronDown className="w-4 h-4 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-                </div>
-              </div>
+              <PresetDropdown
+                label="Select preset to get code:"
+                selectedPresetId={selectedPresetId}
+                onSelect={setSelectedPresetId}
+                savedPresets={savedPresets}
+                activeTargetPreset={activeTargetPreset}
+              />
 
               {/* Code Box */}
               <div className="space-y-1.5">
