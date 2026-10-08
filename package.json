@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "sync-prices": "node scripts/sync-prices.js"
+    "sync-prices": "node scripts/sync-prices.js",
+    "sync-and-deploy": "node scripts/sync-prices.js && vercel deploy --prod --yes"
   },
   "dependencies": {
     "@types/qrcode": "^1.5.6",

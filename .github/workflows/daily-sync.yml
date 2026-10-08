@@ -2,9 +2,13 @@ name: Daily MTG Card Kingdom Price Sync
 
 on:
   schedule:
-    # Runs automatically every day at 00:00 UTC (07:00 AM Thailand time)
-    - cron: '0 0 * * *'
+    # Runs automatically every day at 04:00 UTC (11:00 AM Thailand time)
+    # Card Kingdom publishes its daily dump overnight (~20:00 UTC)
+    - cron: '0 4 * * *'
   workflow_dispatch: # Allows manual run button in GitHub Actions tab
+
+permissions:
+  contents: write
 
 jobs:
   sync-and-deploy:
@@ -29,3 +33,11 @@ jobs:
         with:
           commit_message: "chore(prices): automated daily Card Kingdom price sync"
           file_pattern: "src/data/cards.db"
+
+      - name: Deploy to Vercel (if VERCEL_TOKEN configured)
+        if: env.VERCEL_TOKEN != ''
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+        run: npx vercel deploy --prod --yes --token=${{ secrets.VERCEL_TOKEN }}
