@@ -975,18 +975,8 @@ export default function HomePage() {
   const [sortBy, setSortBy] = useState<string>("price_desc");
   const [rowsPerPage, setRowsPerPage] = useState<number>(24);
   const [currentPage, setCurrentPage] = useState<number>(1);
-  const [mobileFilterOpen, setMobileFilterOpen] = useState<boolean>(false);
-  const [isFilterCollapsed, setIsFilterCollapsed] = useState<boolean>(false);
-
-  // Restore filter collapsed state for iPad / Desktop
-  useEffect(() => {
-    try {
-      const saved = localStorage.getItem("lungji_filter_collapsed");
-      if (saved !== null) {
-        setIsFilterCollapsed(saved === "true");
-      }
-    } catch {}
-  }, []);
+  const [isDrawerOpen, setIsDrawerOpen] = useState<boolean>(false);
+  const [isHovered, setIsHovered] = useState<boolean>(false);
 
   // THB Currency Multiplier state (defaults to 35 THB/$, user-customizable)
   const [thbMultiplier, setThbMultiplier] = useState<number>(35);
@@ -1436,7 +1426,8 @@ export default function HomePage() {
     setDebouncedMax(100);
     setSortBy("price_desc");
     setCurrentPage(1);
-    setMobileFilterOpen(false);
+    setIsDrawerOpen(false);
+    setIsHovered(false);
   };
 
   // Hide navbar on scroll down, show on scroll up (optimized with requestAnimationFrame for 60/120fps)
@@ -1583,15 +1574,15 @@ export default function HomePage() {
             </div>
             <button
               type="button"
-              onClick={() => setMobileFilterOpen((prev) => !prev)}
+              onClick={() => setIsDrawerOpen((prev) => !prev)}
               className={`flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl border text-xs font-semibold transition shrink-0 cursor-pointer ${
-                mobileFilterOpen || activeFilterCount > 0
+                isDrawerOpen || activeFilterCount > 0
                   ? "bg-amber-400/15 border-amber-400/40 text-amber-300"
                   : "bg-[#11131c] border-white/[0.08] text-slate-300 hover:border-white/[0.16]"
               }`}
             >
               <Filter className="w-3.5 h-3.5 text-amber-400" />
-              <span>Filters</span>
+              <span>Adv Search</span>
               {activeFilterCount > 0 && (
                 <span className="w-4 h-4 rounded-full bg-amber-400 text-slate-950 font-bold text-[10px] flex items-center justify-center">
                   {activeFilterCount}
@@ -1599,93 +1590,69 @@ export default function HomePage() {
               )}
               <ChevronDown
                 className={`w-3.5 h-3.5 transition-transform duration-200 ${
-                  mobileFilterOpen ? "rotate-180" : ""
+                  isDrawerOpen ? "rotate-180" : ""
                 }`}
               />
             </button>
           </div>
 
-          <div className="flex flex-col lg:flex-row gap-6 items-start relative">
-            
-            {/* Floating Left Edge Filter Tab - iPad & Desktop space saver (matches user's reference) */}
-            {isFilterCollapsed && (
-              <button
-                type="button"
-                onClick={() => {
-                  setIsFilterCollapsed(false);
-                  setMobileFilterOpen(true);
-                  try {
-                    localStorage.setItem("lungji_filter_collapsed", "false");
-                  } catch {}
-                }}
-                className="fixed left-0 top-36 z-40 flex flex-col items-center py-3.5 px-2 bg-[#11131c]/95 hover:bg-[#161926] border border-l-0 border-white/[0.14] hover:border-amber-400/60 rounded-r-xl shadow-2xl shadow-black/60 backdrop-blur-md transition-all duration-200 group cursor-pointer hover:translate-x-0.5"
-                title="คลิกเพื่อแสดงฟิลเตอร์ (Filters)"
-              >
-                <Filter className="w-3.5 h-3.5 text-amber-400 group-hover:scale-110 transition-transform mb-1.5" />
-                
-                {activeFilterCount > 0 && (
-                  <span className="w-4 h-4 rounded-full bg-amber-400 text-slate-950 font-bold text-[9px] flex items-center justify-center shadow mb-1">
-                    {activeFilterCount}
-                  </span>
-                )}
+          {/* Backdrop on touch / click open (tap outside to close drawer) */}
+          {isDrawerOpen && (
+            <div
+              className="fixed inset-0 bg-black/50 backdrop-blur-[2px] z-40 transition-opacity duration-200"
+              onClick={() => {
+                setIsDrawerOpen(false);
+                setIsHovered(false);
+              }}
+            />
+          )}
 
-                <span
-                  className="text-[11px] font-bold uppercase tracking-wider text-slate-200 group-hover:text-amber-300 transition-colors select-none py-1"
-                  style={{ writingMode: "vertical-rl" }}
-                >
-                  Filters
-                </span>
-
-                <ChevronRight className="w-3.5 h-3.5 text-slate-400 group-hover:text-amber-400 group-hover:translate-x-0.5 transition-all mt-1" />
-              </button>
-            )}
-
-            {/* LEFT SIDEBAR FILTER - Clean surface, precise groupings */}
+          <div className="relative">
+            {/* UNIFIED SLIDE-OUT FILTER DRAWER WITH SEAMLESSLY ATTACHED TAB (Starcitygames style) */}
             <aside
-              className={`w-full lg:w-64 xl:w-72 shrink-0 bg-[#11131c] border border-white/[0.06] rounded-2xl p-4 shadow-xl shadow-black/20 lg:sticky z-30 transition-all duration-300 space-y-4 ${
-                showHeader ? "lg:top-18" : "lg:top-4"
+              className={`fixed left-0 z-40 transition-transform duration-300 ease-out w-72 sm:w-80 select-none ${
+                showHeader ? "top-16" : "top-3"
               } ${
-                isFilterCollapsed
-                  ? mobileFilterOpen
-                    ? "block"
-                    : "hidden"
-                  : mobileFilterOpen
-                  ? "block"
-                  : "hidden lg:block"
+                isDrawerOpen || isHovered
+                  ? "translate-x-0"
+                  : "-translate-x-full"
               }`}
+              onMouseEnter={() => setIsHovered(true)}
+              onMouseLeave={() => setIsHovered(false)}
             >
-              <div className="flex items-center justify-between border-b border-white/[0.06] pb-2.5">
-                <div className="flex items-center gap-2 text-xs font-bold text-slate-100 uppercase tracking-wider">
-                  <Filter className="w-3.5 h-3.5 text-amber-400" />
-                  <span>Filters</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  {(searchQuery || selectedEdition !== "all" || foilFilter !== "all" || tokenFilter !== "hide" || selectedRarities.length > 0 || selectedColors.length > 0 || sliderMin > 0 || sliderMax < 100) && (
+              {/* Main Drawer Panel */}
+              <div className="w-full h-[calc(100vh-5rem)] bg-[#11131c] border-r border-white/[0.08] shadow-2xl shadow-black/80 flex flex-col rounded-r-2xl overflow-hidden select-text">
+                {/* Header */}
+                <div className="flex items-center justify-between border-b border-white/[0.06] p-4 pb-3 shrink-0">
+                  <div className="flex items-center gap-2 text-xs font-bold text-slate-100 uppercase tracking-wider">
+                    <Filter className="w-3.5 h-3.5 text-amber-400" />
+                    <span>Adv Search</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    {(searchQuery || selectedEdition !== "all" || foilFilter !== "all" || tokenFilter !== "hide" || selectedRarities.length > 0 || selectedColors.length > 0 || sliderMin > 0 || sliderMax < 100) && (
+                      <button
+                        onClick={handleClearForm}
+                        className="text-[10px] font-medium text-slate-400 hover:text-amber-400 transition cursor-pointer px-1.5 py-0.5"
+                      >
+                        Reset all
+                      </button>
+                    )}
                     <button
-                      onClick={handleClearForm}
-                      className="text-[10px] font-medium text-slate-400 hover:text-amber-400 transition cursor-pointer"
+                      type="button"
+                      onClick={() => {
+                        setIsDrawerOpen(false);
+                        setIsHovered(false);
+                      }}
+                      className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-white/[0.06] transition cursor-pointer"
+                      title="Close"
                     >
-                      Reset all
+                      <X className="w-4 h-4" />
                     </button>
-                  )}
-                  {/* Hide Filter Button (iPad / Desktop space saver) */}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsFilterCollapsed(true);
-                      setMobileFilterOpen(false);
-                      try {
-                        localStorage.setItem("lungji_filter_collapsed", "true");
-                      } catch {}
-                    }}
-                    className="flex items-center gap-1 px-2 py-1 rounded-lg bg-white/[0.04] hover:bg-amber-400/15 border border-white/[0.06] hover:border-amber-400/30 text-slate-400 hover:text-amber-300 text-[11px] font-medium transition cursor-pointer"
-                    title="ซ่อนฟิลเตอร์ (ประหยัดพื้นที่บนหน้าจอ)"
-                  >
-                    <PanelLeftClose className="w-3.5 h-3.5 text-amber-400" />
-                    <span>ซ่อน</span>
-                  </button>
+                  </div>
                 </div>
-              </div>
+
+                {/* Scrollable Filters Content */}
+                <div className="flex-1 overflow-y-auto p-4 space-y-4">
 
               {/* Filter Presets Control (Load Presets & Save Current) */}
               <div className="flex items-center gap-1.5 border-b border-white/[0.06] pb-3">
@@ -2100,7 +2067,8 @@ export default function HomePage() {
                   onClick={() => {
                     setCurrentPage(1);
                     fetchCards();
-                    setMobileFilterOpen(false);
+                    setIsDrawerOpen(false);
+                    setIsHovered(false);
                   }}
                   className="w-full py-2.5 px-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-semibold shadow-sm transition active:scale-[0.98] text-center"
                 >
@@ -2113,39 +2081,64 @@ export default function HomePage() {
                   Clear
                 </button>
               </div>
-            </aside>
+            </div>
+          </div>
 
-            {/* RIGHT SIDE: CARDS AREA (Keeps full width and large size!) */}
-            <div className="flex-1 min-w-0 space-y-4">
-              
-              {/* Results count bar & active filters */}
-              <div className="bg-[#11131c] border border-white/[0.06] rounded-xl px-4 py-2.5 flex items-center justify-between text-xs text-slate-300 shadow-sm flex-wrap gap-2">
-                <div className="flex items-center gap-2 flex-wrap">
-                  {isFilterCollapsed && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setIsFilterCollapsed(false);
-                        setMobileFilterOpen(true);
-                        try {
-                          localStorage.setItem("lungji_filter_collapsed", "false");
-                        } catch {}
-                      }}
-                      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-400/15 hover:bg-amber-400/25 border border-amber-400/35 text-amber-300 font-medium text-xs transition cursor-pointer"
-                      title="แสดงฟิลเตอร์ (Show Filters)"
-                    >
-                      <PanelLeftOpen className="w-3.5 h-3.5" />
-                      <span>Filters</span>
-                      {activeFilterCount > 0 && (
-                        <span className="w-4 h-4 rounded-full bg-amber-400 text-slate-950 font-bold text-[9px] flex items-center justify-center">
-                          {activeFilterCount}
-                        </span>
-                      )}
-                    </button>
-                  )}
-                  <span className="text-slate-400">
-                    Found <strong className="font-mono tabular-nums text-white font-semibold">{totalCount.toLocaleString()}</strong> cards
+          {/* SEAMLESS CONNECTED TAB - physically attached to top-right of panel, moves in 100% lockstep */}
+          <div className="absolute left-[calc(100%-1px)] top-4">
+            <button
+              type="button"
+              onClick={() => {
+                setIsDrawerOpen((prev) => !prev);
+                if (isDrawerOpen) setIsHovered(false);
+              }}
+              className="flex flex-col items-center py-3.5 px-2 bg-[#11131c] border border-l-0 border-white/[0.08] hover:border-amber-400/50 rounded-r-xl shadow-2xl shadow-black/80 transition-colors group cursor-pointer"
+              title={isDrawerOpen ? "Close filters" : "Adv Search (Hover or Tap)"}
+            >
+              <Filter className="w-3.5 h-3.5 text-amber-400 group-hover:scale-110 transition-transform mb-1.5" />
+              {activeFilterCount > 0 && (
+                <span className="w-4 h-4 rounded-full bg-amber-400 text-slate-950 font-bold text-[9px] flex items-center justify-center shadow mb-1">
+                  {activeFilterCount}
+                </span>
+              )}
+              <span
+                className="text-[11px] font-bold uppercase tracking-wider text-slate-200 group-hover:text-amber-300 transition-colors select-none py-1"
+                style={{ writingMode: "vertical-rl" }}
+              >
+                Adv Search
+              </span>
+              <ChevronRight
+                className={`w-3.5 h-3.5 text-slate-400 group-hover:text-amber-400 transition-transform mt-1 ${
+                  isDrawerOpen || isHovered ? "rotate-180" : ""
+                }`}
+              />
+            </button>
+          </div>
+        </aside>
+
+        {/* RIGHT SIDE: CARDS AREA (Takes 100% full width of screen!) */}
+        <div className="w-full space-y-4">
+          
+          {/* Results count bar & active filters */}
+          <div className="bg-[#11131c] border border-white/[0.06] rounded-xl px-4 py-2.5 flex items-center justify-between text-xs text-slate-300 shadow-sm flex-wrap gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
+              <button
+                type="button"
+                onClick={() => setIsDrawerOpen(true)}
+                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-400/15 hover:bg-amber-400/25 border border-amber-400/35 text-amber-300 font-medium text-xs transition cursor-pointer"
+                title="เปิดแถบ Adv Search"
+              >
+                <Filter className="w-3.5 h-3.5 text-amber-400" />
+                <span>Adv Search</span>
+                {activeFilterCount > 0 && (
+                  <span className="w-4 h-4 rounded-full bg-amber-400 text-slate-950 font-bold text-[9px] flex items-center justify-center">
+                    {activeFilterCount}
                   </span>
+                )}
+              </button>
+              <span className="text-slate-400">
+                Found <strong className="font-mono tabular-nums text-white font-semibold">{totalCount.toLocaleString()}</strong> cards
+              </span>
                   {selectedEdition !== "all" && (
                     <button
                       type="button"
