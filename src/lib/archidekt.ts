@@ -8,6 +8,46 @@ export interface FormatArchidektOptions {
   useStockQty?: boolean;
 }
 
+export function extractSetCodeFromCard(card: CKCard): string {
+  // If edition is mapped in editionCodes, check it
+  let mapCode = (editionCodes[card.edition] || "").toLowerCase().trim();
+  if (mapCode === "muma") mapCode = "plst";
+
+  // Also check SKU prefix
+  let skuCode = "";
+  if (card.sku && card.sku.includes("-")) {
+    const rawPrefix = card.sku.split("-")[0].toUpperCase();
+
+    if (rawPrefix.length === 3) {
+      skuCode = rawPrefix.toLowerCase();
+    } else if (rawPrefix.startsWith("SFFIC")) {
+      skuCode = "fic";
+    } else if (rawPrefix.startsWith("SFF")) {
+      skuCode = rawPrefix.slice(3).toLowerCase();
+    } else if (rawPrefix.startsWith("SF") || rawPrefix.startsWith("RF")) {
+      skuCode = rawPrefix.slice(2).toLowerCase();
+    } else if (rawPrefix.length === 4 && (rawPrefix.startsWith("F") || rawPrefix.startsWith("T"))) {
+      skuCode = rawPrefix.slice(1).toLowerCase();
+    } else if (rawPrefix.startsWith("M") && rawPrefix.length === 4) {
+      skuCode = "plst";
+    }
+  }
+
+  // Mystery Booster / The List
+  if (card.edition === "Mystery Booster/The List" || skuCode === "muma" || mapCode === "plst") {
+    return "plst";
+  }
+
+  // If card is from a Commander deck or SKU is standard 3-char code, prefer SKU code if available
+  if (skuCode && skuCode.length === 3) {
+    if (card.edition.toLowerCase().includes("commander") || skuCode.endsWith("c")) {
+      return skuCode;
+    }
+  }
+
+  return mapCode || skuCode;
+}
+
 export function formatArchidektCard(
   card: CKCard,
   options?: FormatArchidektOptions
@@ -18,18 +58,7 @@ export function formatArchidektCard(
     qty = card.qty_retail;
   }
 
-  // Set code lookup
-  let code = editionCodes[card.edition] || "";
-  if (!code && card.sku) {
-    const rawPrefix = card.sku.split("-")[0] || "";
-    code = rawPrefix.replace(/^[FS]+/, "");
-  }
-  let cleanCode = code ? code.toLowerCase().trim() : "";
-
-  // Special case for Mystery Booster / The List (Archidekt uses 'plst')
-  if (card.edition === "Mystery Booster/The List" || cleanCode === "muma") {
-    cleanCode = "plst";
-  }
+  const cleanCode = extractSetCodeFromCard(card);
 
   // Collector number determination (Archidekt requires collector number to match exact printing)
   let colNum = "";
