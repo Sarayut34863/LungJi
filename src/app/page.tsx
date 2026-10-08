@@ -972,6 +972,7 @@ export default function HomePage() {
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [foilFilter, setFoilFilter] = useState<"all" | "foil" | "nonfoil">("all");
   const [tokenFilter, setTokenFilter] = useState<"hide" | "show">("hide");
+  const [variantsFilter, setVariantsFilter] = useState<"hide" | "show">("hide"); // Default: "hide" (เอาเฉพาะใบเดียวในรุ่นเดียว ไม่เอา borderless)
   const [selectedRarities, setSelectedRarities] = useState<string[]>([]);
   const [selectedColors, setSelectedColors] = useState<string[]>([]);
   const [colorMode, setColorMode] = useState<"exact" | "any">("exact");
@@ -1184,6 +1185,7 @@ export default function HomePage() {
     (selectedEdition !== "all" ? 1 : 0) +
     (foilFilter !== "all" ? 1 : 0) +
     (tokenFilter !== "hide" ? 1 : 0) +
+    (variantsFilter !== "hide" ? 1 : 0) +
     selectedRarities.length +
     selectedColors.length +
     (sliderMin > 0 || sliderMax < 100 ? 1 : 0);
@@ -1218,6 +1220,7 @@ export default function HomePage() {
       if (urlFilters.colorMode) setColorMode(urlFilters.colorMode);
       if (urlFilters.foil) setFoilFilter(urlFilters.foil);
       if (urlFilters.tokens) setTokenFilter(urlFilters.tokens);
+      if (urlFilters.variants) setVariantsFilter(urlFilters.variants);
       if (urlFilters.minPrice !== undefined) {
         setSliderMin(urlFilters.minPrice);
         setDebouncedMin(urlFilters.minPrice);
@@ -1240,6 +1243,7 @@ export default function HomePage() {
       colorMode,
       foil: foilFilter,
       tokens: tokenFilter,
+      variants: variantsFilter,
       minPrice: debouncedMin,
       maxPrice: debouncedMax,
       sortBy,
@@ -1252,6 +1256,7 @@ export default function HomePage() {
     colorMode,
     foilFilter,
     tokenFilter,
+    variantsFilter,
     debouncedMin,
     debouncedMax,
     sortBy,
@@ -1340,7 +1345,7 @@ export default function HomePage() {
       const colorParam = selectedColors.length === 0 ? "all" : selectedColors.join(",");
       const minPriceQuery = debouncedMin > 0 ? String(debouncedMin) : "";
       const maxPriceQuery = debouncedMax < 100 ? String(debouncedMax) : "";
-      const cacheKey = `${selectedEdition}|${debouncedQuery}|${foilFilter}|${tokenFilter}|${rarityParam}|${colorParam}|${colorMode}|${minPriceQuery}|${maxPriceQuery}|${sortBy}|${currentPage}|${rowsPerPage}`;
+      const cacheKey = `${selectedEdition}|${debouncedQuery}|${foilFilter}|${tokenFilter}|${variantsFilter}|${rarityParam}|${colorParam}|${colorMode}|${minPriceQuery}|${maxPriceQuery}|${sortBy}|${currentPage}|${rowsPerPage}`;
 
       // Check cache first (0ms instant response)
       const cached = queryCacheRef.current.get(cacheKey);
@@ -1367,6 +1372,7 @@ export default function HomePage() {
           search: debouncedQuery,
           foil: foilFilter,
           tokens: tokenFilter,
+          variants: variantsFilter,
           rarity: rarityParam,
           sortBy: sortBy,
           page: String(currentPage),
@@ -1415,7 +1421,7 @@ export default function HomePage() {
         }
       }
     },
-    [selectedEdition, debouncedQuery, foilFilter, tokenFilter, selectedRarities, selectedColors, colorMode, debouncedMin, debouncedMax, sortBy, currentPage, rowsPerPage]
+    [selectedEdition, debouncedQuery, foilFilter, tokenFilter, variantsFilter, selectedRarities, selectedColors, colorMode, debouncedMin, debouncedMax, sortBy, currentPage, rowsPerPage]
   );
 
   useEffect(() => {
@@ -1432,7 +1438,7 @@ export default function HomePage() {
       const colorParam = selectedColors.length === 0 ? "all" : selectedColors.join(",");
       const minPriceQuery = debouncedMin > 0 ? String(debouncedMin) : "";
       const maxPriceQuery = debouncedMax < 100 ? String(debouncedMax) : "";
-      const nextKey = `${selectedEdition}|${debouncedQuery}|${foilFilter}|${tokenFilter}|${rarityParam}|${colorParam}|${colorMode}|${minPriceQuery}|${maxPriceQuery}|${sortBy}|${nextPage}|${rowsPerPage}`;
+      const nextKey = `${selectedEdition}|${debouncedQuery}|${foilFilter}|${tokenFilter}|${variantsFilter}|${rarityParam}|${colorParam}|${colorMode}|${minPriceQuery}|${maxPriceQuery}|${sortBy}|${nextPage}|${rowsPerPage}`;
 
       if (!queryCacheRef.current.has(nextKey)) {
         const params = new URLSearchParams({
@@ -1440,6 +1446,7 @@ export default function HomePage() {
           search: debouncedQuery,
           foil: foilFilter,
           tokens: tokenFilter,
+          variants: variantsFilter,
           rarity: rarityParam,
           sortBy: sortBy,
           page: String(nextPage),
@@ -1472,7 +1479,7 @@ export default function HomePage() {
     }, 1500);
 
     return () => clearTimeout(prefetchTimer);
-  }, [currentPage, totalPages, isLoading, cards.length, selectedEdition, debouncedQuery, foilFilter, tokenFilter, selectedRarities, selectedColors, colorMode, debouncedMin, debouncedMax, sortBy, rowsPerPage]);
+  }, [currentPage, totalPages, isLoading, cards.length, selectedEdition, debouncedQuery, foilFilter, tokenFilter, variantsFilter, selectedRarities, selectedColors, colorMode, debouncedMin, debouncedMax, sortBy, rowsPerPage]);
 
   // Auto-sync data in the background every 30 minutes
   useEffect(() => {
@@ -1489,6 +1496,7 @@ export default function HomePage() {
     setSelectedEdition("all");
     setFoilFilter("all");
     setTokenFilter("hide");
+    setVariantsFilter("hide");
     setSelectedRarities([]);
     setSelectedColors([]);
     setColorMode("exact");
@@ -1705,7 +1713,7 @@ export default function HomePage() {
                     <span>Filters</span>
                   </div>
                   <div className="flex items-center gap-1.5">
-                    {(searchQuery || selectedEdition !== "all" || foilFilter !== "all" || tokenFilter !== "hide" || selectedRarities.length > 0 || selectedColors.length > 0 || sliderMin > 0 || sliderMax < 100) && (
+                    {(searchQuery || selectedEdition !== "all" || foilFilter !== "all" || tokenFilter !== "hide" || variantsFilter !== "hide" || selectedRarities.length > 0 || selectedColors.length > 0 || sliderMin > 0 || sliderMax < 100) && (
                       <button
                         onClick={handleClearForm}
                         className="text-[10px] font-medium text-slate-400 hover:text-amber-400 transition cursor-pointer px-1.5 py-0.5"
@@ -2053,6 +2061,61 @@ export default function HomePage() {
                 </div>
               </div>
 
+              {/* Variants Filter (Default: Hide / เอาเฉพาะใบเดียว) */}
+              <div className="space-y-1.5 border-b border-white/[0.06] pb-3.5">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5">
+                    <label className="text-xs font-semibold text-slate-200">Variants</label>
+                    <span className="text-[10px] text-slate-400 font-normal">(เอาเฉพาะใบเดียว)</span>
+                  </div>
+                  {variantsFilter === "show" && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setVariantsFilter("hide");
+                        setCurrentPage(1);
+                      }}
+                      className="text-[10px] text-amber-400 hover:text-amber-300 transition cursor-pointer"
+                      title="ซ่อนการ์ดซ้ำ/Borderless"
+                    >
+                      Reset
+                    </button>
+                  )}
+                </div>
+                <div className="grid grid-cols-2 gap-1 bg-[#0b0d14] p-1 rounded-lg border border-white/[0.06]">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setVariantsFilter("hide");
+                      setCurrentPage(1);
+                    }}
+                    className={`py-1.5 text-xs font-medium rounded-md transition cursor-pointer text-center ${
+                      variantsFilter === "hide"
+                        ? "bg-white/[0.08] text-white font-semibold border border-white/[0.08]"
+                        : "text-slate-400 hover:text-slate-200"
+                    }`}
+                    title="ซ่อนการ์ด Borderless/ซ้ำในชุดเดียวกัน (แสดงเฉพาะใบหลักใบเดียว)"
+                  >
+                    Hide
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setVariantsFilter("show");
+                      setCurrentPage(1);
+                    }}
+                    className={`py-1.5 text-xs font-medium rounded-md transition cursor-pointer text-center ${
+                      variantsFilter === "show"
+                        ? "bg-amber-400/15 text-amber-300 border border-amber-400/30 font-semibold"
+                        : "text-slate-400 hover:text-slate-200"
+                    }`}
+                    title="แสดงทุกเวอร์ชันรวมถึง Borderless และ Showcase"
+                  >
+                    Show
+                  </button>
+                </div>
+              </div>
+
               {/* Dual-Range Price Slider */}
               <PriceRangeSlider
                 minVal={sliderMin}
@@ -2288,6 +2351,20 @@ export default function HomePage() {
                       title="Hide tokens"
                     >
                       <span>Tokens: Included</span>
+                      <X className="w-3 h-3 text-amber-400/70 group-hover:text-amber-300 shrink-0" />
+                    </button>
+                  )}
+                  {variantsFilter === "show" && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setVariantsFilter("hide");
+                        setCurrentPage(1);
+                      }}
+                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-400/10 hover:bg-amber-400/15 border border-amber-400/25 text-amber-300 text-[11px] transition group"
+                      title="Hide variants (show only 1 card per set)"
+                    >
+                      <span>Variants: Included</span>
                       <X className="w-3 h-3 text-amber-400/70 group-hover:text-amber-300 shrink-0" />
                     </button>
                   )}

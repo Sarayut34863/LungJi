@@ -7,6 +7,7 @@ export interface FilterPreset {
   colorMode: "exact" | "any";
   foil: "all" | "foil" | "nonfoil";
   tokens: "hide" | "show";
+  variants?: "hide" | "show";
   minPrice: number;
   maxPrice: number;
   edition?: string;
@@ -59,6 +60,7 @@ export function encodePresetCode(preset: Partial<FilterPreset>): string {
       cm: preset.colorMode || "exact",
       f: preset.foil || "all",
       t: preset.tokens || "hide",
+      v: preset.variants || "hide",
       min: preset.minPrice ?? 0,
       max: preset.maxPrice ?? 100,
       ed: preset.edition && preset.edition !== "all" ? preset.edition : undefined,
@@ -91,6 +93,7 @@ export function decodePresetCode(rawCode: string): Partial<FilterPreset> | null 
       colorMode: parsed.cm === "any" ? "any" : "exact",
       foil: ["all", "foil", "nonfoil"].includes(parsed.f) ? parsed.f : "all",
       tokens: parsed.t === "show" ? "show" : "hide",
+      variants: parsed.v === "show" ? "show" : "hide",
       minPrice: typeof parsed.min === "number" ? parsed.min : 0,
       maxPrice: typeof parsed.max === "number" ? parsed.max : 100,
       edition: parsed.ed || "all",
@@ -108,6 +111,7 @@ export function syncFiltersToUrl(filters: {
   colorMode?: "exact" | "any";
   foil?: "all" | "foil" | "nonfoil";
   tokens?: "hide" | "show";
+  variants?: "hide" | "show";
   minPrice?: number;
   maxPrice?: number;
   edition?: string;
@@ -140,6 +144,9 @@ export function syncFiltersToUrl(filters: {
     if (filters.tokens === "show") {
       params.set("tokens", "show");
     }
+    if (filters.variants === "show") {
+      params.set("variants", "show");
+    }
     if (typeof filters.minPrice === "number" && filters.minPrice > 0) {
       params.set("min", String(filters.minPrice));
     }
@@ -165,6 +172,7 @@ export function buildPresetUrl(filters: {
   colorMode?: "exact" | "any";
   foil?: "all" | "foil" | "nonfoil";
   tokens?: "hide" | "show";
+  variants?: "hide" | "show";
   minPrice?: number;
   maxPrice?: number;
   edition?: string;
@@ -243,6 +251,9 @@ export function parseFiltersFromUrl(): Partial<FilterPreset> | null {
     }
     if (params.has("tokens")) {
       result.tokens = params.get("tokens") === "show" ? "show" : "hide";
+    }
+    if (params.has("variants")) {
+      result.variants = params.get("variants") === "show" ? "show" : "hide";
     }
     if (params.has("min")) {
       const min = parseFloat(params.get("min") || "0");

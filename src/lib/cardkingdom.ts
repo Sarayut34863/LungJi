@@ -55,6 +55,7 @@ export interface SearchParams {
   color?: string;
   colorMode?: "exact" | "any";
   tokens?: "hide" | "show";
+  variants?: "hide" | "show";
   inStock?: boolean;
   minPrice?: number;
   maxPrice?: number;
@@ -476,8 +477,40 @@ export async function searchCards(params: SearchParams) {
 
   const orderClause = parseSortOrder(sortBy);
 
-  // Fast count query using index
-  const countSql = `SELECT COUNT(*) as total FROM cards ${whereClause}`;
+  const hideVariants = params.variants !== "show"; // Default: hide variants (เอาเฉพาะใบเดียวในรุ่นเดียว ไม่เอา borderless)
+
+  let countSql = `SELECT COUNT(*) as total FROM cards ${whereClause}`;
+  let dataSql = `SELECT * FROM cards ${whereClause} ${orderClause} LIMIT ? OFFSET ?`;
+
+  if (hideVariants) {
+    const cte = `
+      WITH ranked AS (
+        SELECT *,
+          ROW_NUMBER() OVER (
+            PARTITION BY clean_name, REPLACE(edition, ' Variants', ''), is_foil
+            ORDER BY 
+              CASE WHEN edition LIKE '% Variants' THEN 1 ELSE 0 END ASC,
+              CASE WHEN variation IS NOT NULL AND (
+                LOWER(variation) LIKE '%borderless%' OR 
+                LOWER(variation) LIKE '%showcase%' OR 
+                LOWER(variation) LIKE '%extended%' OR 
+                LOWER(variation) LIKE '%retro%' OR
+                LOWER(variation) LIKE '%etched%' OR
+                LOWER(variation) LIKE '%prize%' OR
+                LOWER(variation) LIKE '%promo%'
+              ) THEN 1 ELSE 0 END ASC,
+              CASE WHEN variation IS NULL THEN 0 ELSE 1 END ASC,
+              collector_number ASC,
+              id ASC
+          ) as rn
+        FROM cards
+        ${whereClause}
+      )
+    `;
+    countSql = `${cte} SELECT COUNT(*) as total FROM ranked WHERE rn = 1`;
+    dataSql = `${cte} SELECT * FROM ranked WHERE rn = 1 ${orderClause} LIMIT ? OFFSET ?`;
+  }
+
   const totalRow = db.prepare(countSql).get(...binds) as unknown as { total: number } | undefined;
   const total = totalRow?.total || 0;
 
@@ -486,8 +519,6 @@ export async function searchCards(params: SearchParams) {
   const offset = (safePage - 1) * safeLimit;
   const totalPages = Math.ceil(total / safeLimit) || 1;
 
-  // Fast paged query using index
-  const dataSql = `SELECT * FROM cards ${whereClause} ${orderClause} LIMIT ? OFFSET ?`;
   const rows = db.prepare(dataSql).all(...binds, safeLimit, offset) as unknown as {
     id: number;
     sku: string | null;
