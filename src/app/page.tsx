@@ -1582,7 +1582,7 @@ export default function HomePage() {
               }`}
             >
               <Filter className="w-3.5 h-3.5 text-amber-400" />
-              <span>Adv Search</span>
+              <span>Filters</span>
               {activeFilterCount > 0 && (
                 <span className="w-4 h-4 rounded-full bg-amber-400 text-slate-950 font-bold text-[10px] flex items-center justify-center">
                   {activeFilterCount}
@@ -1626,7 +1626,7 @@ export default function HomePage() {
                 <div className="flex items-center justify-between border-b border-white/[0.06] p-4 pb-3 shrink-0">
                   <div className="flex items-center gap-2 text-xs font-bold text-slate-100 uppercase tracking-wider">
                     <Filter className="w-3.5 h-3.5 text-amber-400" />
-                    <span>Adv Search</span>
+                    <span>Filters</span>
                   </div>
                   <div className="flex items-center gap-1.5">
                     {(searchQuery || selectedEdition !== "all" || foilFilter !== "all" || tokenFilter !== "hide" || selectedRarities.length > 0 || selectedColors.length > 0 || sliderMin > 0 || sliderMax < 100) && (
@@ -2093,7 +2093,7 @@ export default function HomePage() {
                 if (isDrawerOpen) setIsHovered(false);
               }}
               className="flex flex-col items-center py-3.5 px-2 bg-[#11131c] border border-l-0 border-white/[0.08] hover:border-amber-400/50 rounded-r-xl shadow-2xl shadow-black/80 transition-colors group cursor-pointer"
-              title={isDrawerOpen ? "Close filters" : "Adv Search (Hover or Tap)"}
+              title={isDrawerOpen ? "Close filters" : "Filters (Hover or Tap)"}
             >
               <Filter className="w-3.5 h-3.5 text-amber-400 group-hover:scale-110 transition-transform mb-1.5" />
               {activeFilterCount > 0 && (
@@ -2105,7 +2105,7 @@ export default function HomePage() {
                 className="text-[11px] font-bold uppercase tracking-wider text-slate-200 group-hover:text-amber-300 transition-colors select-none py-1"
                 style={{ writingMode: "vertical-rl" }}
               >
-                Adv Search
+                Filters
               </span>
               <ChevronRight
                 className={`w-3.5 h-3.5 text-slate-400 group-hover:text-amber-400 transition-transform mt-1 ${
@@ -2126,10 +2126,10 @@ export default function HomePage() {
                 type="button"
                 onClick={() => setIsDrawerOpen(true)}
                 className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-400/15 hover:bg-amber-400/25 border border-amber-400/35 text-amber-300 font-medium text-xs transition cursor-pointer"
-                title="เปิดแถบ Adv Search"
+                title="เปิดแถบฟิลเตอร์ (Filters)"
               >
                 <Filter className="w-3.5 h-3.5 text-amber-400" />
-                <span>Adv Search</span>
+                <span>Filters</span>
                 {activeFilterCount > 0 && (
                   <span className="w-4 h-4 rounded-full bg-amber-400 text-slate-950 font-bold text-[9px] flex items-center justify-center">
                     {activeFilterCount}
