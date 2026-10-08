@@ -78,9 +78,12 @@ export function formatArchidektCard(
     }
   }
 
+  const isFoil = card.is_foil === "true" || card.is_foil === true || String(card.is_foil) === "1";
+  const foilTag = isFoil ? " *F*" : "";
+
   const setTag = cleanCode ? ` (${cleanCode})` : "";
   const colTag = colNum ? ` ${colNum}` : "";
 
-  // Note: Archidekt does not use trailing " F" for foils in text deck import (causes syntax error)
-  return `${qty}x ${card.name}${setTag}${colTag}`;
+  // Format: 1x Card Name (set) 123 *F*
+  return `${qty}x ${card.name}${setTag}${colTag}${foilTag}`;
 }
