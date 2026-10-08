@@ -2834,11 +2834,26 @@ function ArchidektCardItem({
         {/* Foil Holographic Shimmer Effect */}
         {isFoil && isLoaded && <div className="mtg-foil-effect z-10" />}
 
-        {/* Foil Badge if applicable */}
-        {isFoil && (
-          <div className="absolute top-2 right-2 z-20 px-1.5 py-0.5 rounded-md bg-[#090b12]/85 backdrop-blur-sm border border-amber-400/35 text-amber-300 font-mono text-[9px] font-semibold tracking-wider flex items-center gap-1 shadow-sm">
+        {/* Foil / Variation Badge */}
+        {(isFoil || (card.variation && card.variation.trim().length > 0)) && (
+          <div
+            className={`absolute top-2 right-2 z-20 px-1.5 py-0.5 rounded-md backdrop-blur-sm font-mono text-[9px] font-semibold tracking-wider flex items-center gap-1 shadow-sm ${
+              card.variation && /etched/i.test(card.variation)
+                ? "bg-[#181329]/90 border border-purple-400/50 text-purple-200"
+                : isFoil
+                ? "bg-[#090b12]/85 border border-amber-400/35 text-amber-300"
+                : "bg-[#090b12]/85 border border-cyan-400/35 text-cyan-300"
+            }`}
+            title={card.variation || (isFoil ? "Traditional Foil" : "")}
+          >
             <Sparkles className="w-2.5 h-2.5 text-amber-400" />
-            <span>FOIL</span>
+            <span className="truncate max-w-[110px]">
+              {card.variation && card.variation.trim()
+                ? card.variation.toUpperCase()
+                : isFoil
+                ? "FOIL"
+                : ""}
+            </span>
           </div>
         )}
 
