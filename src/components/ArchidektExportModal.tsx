@@ -39,9 +39,6 @@ export function ArchidektExportModal({
   const [allSearchResultCards, setAllSearchResultCards] = useState<CKCard[] | null>(null);
   const [isLoadingAllResults, setIsLoadingAllResults] = useState<boolean>(false);
 
-  // Include Collector Number in output (e.g. "1x Name (set) 123 F" vs "1x Name (set) F")
-  const [includeCollectorNumber, setIncludeCollectorNumber] = useState<boolean>(false);
-
   // Copied state indicator
   const [isCopied, setIsCopied] = useState<boolean>(false);
 
@@ -96,7 +93,6 @@ export function ArchidektExportModal({
     const lines = activeExportCards.map((card) => {
       return formatArchidektCard(card, {
         quantity: 1, // Standard 1x import format for Archidekt
-        includeCollectorNumber,
       });
     });
 
@@ -104,7 +100,7 @@ export function ArchidektExportModal({
       exportText: lines.join("\n"),
       cardCount: lines.length,
     };
-  }, [activeExportCards, includeCollectorNumber]);
+  }, [activeExportCards]);
 
   if (!isOpen) return null;
 
@@ -158,13 +154,7 @@ export function ArchidektExportModal({
             <div>
               <h2 className="text-base font-bold text-white flex items-center gap-2">
                 <span>Export to Archidekt</span>
-                <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-amber-400/20 text-amber-300 font-semibold border border-amber-400/30">
-                  Import Ready
-                </span>
               </h2>
-              <p className="text-xs text-slate-400">
-                ฟอร์แมตมาตรฐาน 1x สำหรับ Import เข้า Archidekt / Moxfield / Deckbuilders
-              </p>
             </div>
           </div>
           <button
@@ -177,7 +167,7 @@ export function ArchidektExportModal({
         </div>
 
         {/* Options & Controls Bar */}
-        <div className="p-4 sm:p-5 border-b border-white/[0.06] bg-[#0c0e17] space-y-3 shrink-0">
+        <div className="p-4 sm:p-5 border-b border-white/[0.06] bg-[#0c0e17] shrink-0">
           <div className="flex flex-wrap items-center justify-between gap-3 text-xs">
             {/* Select Buttons */}
             <div className="flex flex-wrap items-center gap-2">
@@ -258,26 +248,11 @@ export function ArchidektExportModal({
             </div>
 
             {/* Total Count */}
-            <div className="text-[11px] font-mono text-slate-400 shrink-0">
-              รวม: <strong className="text-white text-xs">{cardCount}</strong> ใบ
-            </div>
-          </div>
-
-          {/* Collector Number Checkbox */}
-          <div className="flex items-center justify-between pt-1">
-            <label className="flex items-center gap-2 cursor-pointer select-none text-xs text-slate-300">
-              <input
-                type="checkbox"
-                checked={includeCollectorNumber}
-                onChange={(e) => setIncludeCollectorNumber(e.target.checked)}
-                className="w-3.5 h-3.5 rounded accent-amber-400 cursor-pointer"
-              />
-              <span>ใส่หมายเลข Collector Number ด้วย (เช่น <code className="text-amber-300 font-mono">1x Card (som) 109</code>)</span>
-            </label>
-
-            <span className="text-[10px] text-slate-500 font-mono hidden sm:inline">
-              ฟอร์แมต 1x ตามมาตรฐาน Archidekt
-            </span>
+            {cardCount > 0 && (
+              <div className="text-[11px] font-mono text-slate-400 shrink-0">
+                รวม: <strong className="text-white text-xs">{cardCount}</strong> ใบ
+              </div>
+            )}
           </div>
         </div>
 
@@ -331,28 +306,18 @@ export function ArchidektExportModal({
                 className="w-full flex-1 min-h-[220px] max-h-[360px] p-3.5 bg-[#08090f] border border-white/[0.08] rounded-xl text-xs font-mono text-slate-200 resize-none outline-none focus:border-amber-400/50 select-all leading-relaxed"
                 placeholder="1x Card Name (set) F"
               />
-              <div className="mt-2 text-[11px] text-slate-400 flex items-center justify-between">
-                <span>
-                  💡 ตัวอย่าง: <code className="text-amber-300 font-mono">1x Akim, the Soaring Wind (c20) F</code>
-                </span>
-                <span className="text-slate-500">Archidekt / Moxfield Native Support</span>
-              </div>
             </div>
           )}
         </div>
 
         {/* Footer Actions */}
         <div className="p-4 sm:p-5 border-t border-white/[0.08] bg-[#121624] flex items-center justify-between gap-3 shrink-0">
-          <div className="text-xs text-slate-400">
-            {isCopied ? (
+          <div className="text-xs">
+            {isCopied && (
               <span className="text-emerald-400 font-semibold flex items-center gap-1.5 animate-in fade-in">
                 <Check className="w-4 h-4" />
-                คัดลอกลิสต์ลง Clipboard แล้ว! พร้อมวางใน Archidekt ได้ทันที
+                คัดลอกแล้ว
               </span>
-            ) : cardCount > 0 ? (
-              <span>กดคัดลอกแล้วไปวางที่หน้า <strong>Import Deck</strong> บน Archidekt ได้เลย</span>
-            ) : (
-              <span className="text-slate-500">กดปุ่มเลือกการ์ดด้านบนเพื่อเริ่ม Export</span>
             )}
           </div>
 
@@ -381,7 +346,7 @@ export function ArchidektExportModal({
               {isCopied ? (
                 <>
                   <Check className="w-4 h-4 stroke-[3]" />
-                  <span>คัดลอกสำเร็จ!</span>
+                  <span>คัดลอกแล้ว</span>
                 </>
               ) : (
                 <>
