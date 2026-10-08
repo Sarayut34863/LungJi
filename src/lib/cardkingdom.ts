@@ -481,7 +481,7 @@ export async function searchCards(params: SearchParams) {
   const total = totalRow?.total || 0;
 
   const safePage = Math.max(1, page);
-  const safeLimit = Math.max(1, Math.min(limit, 250));
+  const safeLimit = Math.max(1, Math.min(limit, 2000));
   const offset = (safePage - 1) * safeLimit;
   const totalPages = Math.ceil(total / safeLimit) || 1;
 

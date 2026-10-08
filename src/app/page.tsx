@@ -1614,7 +1614,7 @@ export default function HomePage() {
               <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
               <input
                 type="text"
-                placeholder="Search name, t:dinosaur, t:land..."
+                placeholder="Search card name..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full bg-[#11131c] border border-white/[0.08] rounded-xl pl-9 pr-8 py-2.5 text-xs text-slate-100 placeholder:text-slate-500 outline-none focus:border-amber-400/60"
@@ -1728,14 +1728,11 @@ export default function HomePage() {
 
               {/* Card Name & Type Filter */}
               <div className="space-y-1.5 border-b border-white/[0.06] pb-3.5">
-                <div className="flex items-center justify-between">
-                  <label className="text-xs font-semibold text-slate-200">Card Name / Type</label>
-                  <span className="text-[10px] text-amber-400 font-mono">t:dinosaur</span>
-                </div>
+                <label className="text-xs font-semibold text-slate-200 block">Card Name / Type</label>
                 <div className="relative">
                   <input
                     type="text"
-                    placeholder="Search name, t:dinosaur, t:land..."
+                    placeholder="Search card name..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     className="w-full bg-[#0b0d14] border border-white/[0.08] rounded-lg px-3 py-2 text-xs text-slate-100 placeholder:text-slate-500 outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-400/25 transition"
@@ -1748,9 +1745,6 @@ export default function HomePage() {
                       <X className="w-3.5 h-3.5" />
                     </button>
                   )}
-                </div>
-                <div className="text-[10px] text-slate-500 flex items-center gap-1">
-                  <span>💡 พิมพ์ <code className="text-amber-400 font-mono font-semibold">t:dinosaur</code> หรือ <code className="text-amber-400 font-mono font-semibold">t:land</code> เพื่อกรองเผ่า/ประเภท</span>
                 </div>
               </div>
 
@@ -2213,7 +2207,7 @@ export default function HomePage() {
                   }
                 >
                   <CheckSquare className={`w-3.5 h-3.5 ${isAllPageSelected ? "text-slate-950" : "text-amber-400"}`} />
-                  <span>{isAllPageSelected ? "Deselect Page" : "Select All (เลือกทั้งหมด)"}</span>
+                  <span>{isAllPageSelected ? "ยกเลิกเลือกทั้งหมด" : `เลือกทั้งหมด (${cards.length})`}</span>
                 </button>
               )}
 
@@ -2562,6 +2556,9 @@ export default function HomePage() {
           currentCards={cards}
           searchQuery={searchQuery}
           totalSearchCount={totalCount}
+          onToggleSelectAll={handleToggleSelectPage}
+          isAllPageSelected={isAllPageSelected}
+          onClearAll={clearAllSelectedCards}
         />
 
         {/* Filter Presets Modal (Presets Library, Mobile QR Sync, Preset Codes) */}

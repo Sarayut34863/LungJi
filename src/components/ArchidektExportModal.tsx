@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useMemo } from "react";
-import { X, Copy, Check, Download, FileText, Sparkles, CheckSquare, Layers } from "lucide-react";
+import { X, Copy, Check, Download, FileText, CheckSquare, Sparkles, Trash2, Square } from "lucide-react";
 import type { CKCard } from "@/lib/cardkingdom";
 import { formatArchidektCard } from "@/lib/archidekt";
 
@@ -12,6 +12,9 @@ interface ArchidektExportModalProps {
   currentCards: CKCard[];
   searchQuery?: string;
   totalSearchCount?: number;
+  onToggleSelectAll?: () => void;
+  isAllPageSelected?: boolean;
+  onClearAll?: () => void;
 }
 
 export function ArchidektExportModal({
@@ -21,20 +24,20 @@ export function ArchidektExportModal({
   currentCards,
   searchQuery = "",
   totalSearchCount = 0,
+  onToggleSelectAll,
+  isAllPageSelected = false,
+  onClearAll,
 }: ArchidektExportModalProps) {
+  // Extract user's individually selected cards from queue
   const selectedList = useMemo(() => {
     return Object.values(selectedCards).filter((item) => item.quantity > 0);
   }, [selectedCards]);
 
   const hasSelected = selectedList.length > 0;
 
-  // Source mode: 'selected' or 'current'
-  const [sourceMode, setSourceMode] = useState<"selected" | "current">(
-    hasSelected ? "selected" : "current"
-  );
-
-  // Quantity mode: 'stock' (card.qty_retail) or '1x'
-  const [quantityMode, setQuantityMode] = useState<"1x" | "stock">("1x");
+  // Extra state: all search result cards when user chooses to load all (e.g. all 943 Dinosaurs)
+  const [allSearchResultCards, setAllSearchResultCards] = useState<CKCard[] | null>(null);
+  const [isLoadingAllResults, setIsLoadingAllResults] = useState<boolean>(false);
 
   // Include Collector Number in output (e.g. "1x Name (set) 123 F" vs "1x Name (set) F")
   const [includeCollectorNumber, setIncludeCollectorNumber] = useState<boolean>(false);
@@ -42,38 +45,71 @@ export function ArchidektExportModal({
   // Copied state indicator
   const [isCopied, setIsCopied] = useState<boolean>(false);
 
-  // Generate the formatted text
-  const { exportText, cardCount, totalQuantity } = useMemo(() => {
-    const targetCards =
-      sourceMode === "selected" && hasSelected
-        ? selectedList.map((item) => ({
-            card: item.card,
-            qty: quantityMode === "stock" ? Math.max(1, item.card.qty_retail || 1) : item.quantity,
-          }))
-        : currentCards.map((card) => ({
-            card,
-            qty: quantityMode === "stock" ? Math.max(1, card.qty_retail || 1) : 1,
-          }));
+  // Can we offer to load all search results? (search is active and total count > current cards)
+  const canFetchAllSearch = totalSearchCount > currentCards.length && !!searchQuery;
 
-    let totQty = 0;
-    const lines = targetCards.map(({ card, qty }) => {
-      totQty += qty;
+  // Fetch all search results if requested
+  const handleFetchAllSearchResults = async () => {
+    if (isLoadingAllResults) return;
+    setIsLoadingAllResults(true);
+    try {
+      const res = await fetch(`/api/cards?search=${encodeURIComponent(searchQuery)}&limit=2000`);
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data.cards)) {
+          setAllSearchResultCards(data.cards);
+        }
+      }
+    } catch (e) {
+      console.error("Failed to fetch all search results for export:", e);
+    } finally {
+      setIsLoadingAllResults(false);
+    }
+  };
+
+  const handleClear = () => {
+    setAllSearchResultCards(null);
+    if (onClearAll) {
+      onClearAll();
+    }
+  };
+
+  // Determine active cards to export
+  // DO NOT DEFAULT TO SELECTING CARDS! (User requirement: "อย่าทำเป็นดีฟอล ให้มีปุ่มไว้กดว่าเลือกทั้งหมด")
+  const activeExportCards = useMemo<CKCard[]>(() => {
+    if (allSearchResultCards && allSearchResultCards.length > 0) {
+      return allSearchResultCards;
+    }
+    if (hasSelected) {
+      return selectedList.map((item) => item.card);
+    }
+    // If nothing selected, DO NOT default! Return empty array.
+    return [];
+  }, [allSearchResultCards, hasSelected, selectedList]);
+
+  // Generate formatted export text
+  const { exportText, cardCount } = useMemo(() => {
+    if (activeExportCards.length === 0) {
+      return { exportText: "", cardCount: 0 };
+    }
+
+    const lines = activeExportCards.map((card) => {
       return formatArchidektCard(card, {
-        quantity: qty,
+        quantity: 1, // Standard 1x import format for Archidekt
         includeCollectorNumber,
       });
     });
 
     return {
       exportText: lines.join("\n"),
-      cardCount: targetCards.length,
-      totalQuantity: totQty,
+      cardCount: lines.length,
     };
-  }, [sourceMode, hasSelected, selectedList, currentCards, quantityMode, includeCollectorNumber]);
+  }, [activeExportCards, includeCollectorNumber]);
 
   if (!isOpen) return null;
 
   const handleCopy = async () => {
+    if (!exportText) return;
     try {
       await navigator.clipboard.writeText(exportText);
       setIsCopied(true);
@@ -92,6 +128,7 @@ export function ArchidektExportModal({
   };
 
   const handleDownload = () => {
+    if (!exportText) return;
     const blob = new Blob([exportText], { type: "text/plain;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
@@ -126,7 +163,7 @@ export function ArchidektExportModal({
                 </span>
               </h2>
               <p className="text-xs text-slate-400">
-                ฟอร์แมตมาตรฐานสำหรับ Import เข้า Archidekt / Moxfield / Deckbuilders
+                ฟอร์แมตมาตรฐาน 1x สำหรับ Import เข้า Archidekt / Moxfield / Deckbuilders
               </p>
             </div>
           </div>
@@ -142,62 +179,87 @@ export function ArchidektExportModal({
         {/* Options & Controls Bar */}
         <div className="p-4 sm:p-5 border-b border-white/[0.06] bg-[#0c0e17] space-y-3 shrink-0">
           <div className="flex flex-wrap items-center justify-between gap-3 text-xs">
-            {/* Source Selection */}
-            <div className="flex items-center gap-1.5 bg-[#141724] p-1 rounded-xl border border-white/[0.08]">
-              {hasSelected && (
+            {/* Select Buttons */}
+            <div className="flex flex-wrap items-center gap-2">
+              {/* Select All Button */}
+              {currentCards.length > 0 && onToggleSelectAll && (
                 <button
                   type="button"
-                  onClick={() => setSourceMode("selected")}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-semibold transition cursor-pointer ${
-                    sourceMode === "selected"
-                      ? "bg-amber-400 text-slate-950 shadow-sm"
-                      : "text-slate-400 hover:text-slate-200"
+                  onClick={() => {
+                    setAllSearchResultCards(null);
+                    onToggleSelectAll();
+                  }}
+                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer border ${
+                    isAllPageSelected && !allSearchResultCards
+                      ? "bg-amber-400 text-slate-950 border-amber-400 font-bold shadow-sm shadow-amber-500/20"
+                      : "bg-white/[0.06] hover:bg-white/[0.1] border-white/[0.1] text-slate-200 hover:text-white"
                   }`}
+                  title={isAllPageSelected ? "ยกเลิกเลือกการ์ดในหน้านี้ทั้งหมด" : "เลือกการ์ดทั้งหมดในหน้านี้"}
                 >
-                  <CheckSquare className="w-3.5 h-3.5" />
-                  <span>การ์ดในคิว ({selectedList.length})</span>
+                  {isAllPageSelected && !allSearchResultCards ? (
+                    <CheckSquare className="w-3.5 h-3.5 text-slate-950" />
+                  ) : (
+                    <Square className="w-3.5 h-3.5 text-amber-400" />
+                  )}
+                  <span>
+                    {isAllPageSelected && !allSearchResultCards
+                      ? "ยกเลิกเลือกทั้งหมด"
+                      : `เลือกทั้งหมด (${currentCards.length})`}
+                  </span>
                 </button>
               )}
-              <button
-                type="button"
-                onClick={() => setSourceMode("current")}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-semibold transition cursor-pointer ${
-                  sourceMode === "current"
-                    ? "bg-amber-400 text-slate-950 shadow-sm"
-                    : "text-slate-400 hover:text-slate-200"
-                }`}
-              >
-                <Layers className="w-3.5 h-3.5" />
-                <span>การ์ดบนหน้านี้ ({currentCards.length})</span>
-              </button>
+
+              {/* All Search Results Button (e.g. 943 Dinosaurs) */}
+              {canFetchAllSearch && (
+                <button
+                  type="button"
+                  onClick={handleFetchAllSearchResults}
+                  disabled={isLoadingAllResults}
+                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer border ${
+                    allSearchResultCards && allSearchResultCards.length > 0
+                      ? "bg-amber-400 text-slate-950 border-amber-400 font-bold shadow-sm shadow-amber-500/20"
+                      : "bg-amber-400/10 hover:bg-amber-400/20 border-amber-400/30 text-amber-300"
+                  }`}
+                  title="โหลดการ์ดทั้งหมดจากผลการค้นหาเพื่อ Export"
+                >
+                  {isLoadingAllResults ? (
+                    <span className="w-3 h-3 border-2 border-amber-400 border-t-transparent rounded-full animate-spin" />
+                  ) : (
+                    <Sparkles className="w-3.5 h-3.5" />
+                  )}
+                  <span>
+                    {allSearchResultCards && allSearchResultCards.length > 0
+                      ? `เลือกผลค้นหาทั้งหมดแล้ว (${allSearchResultCards.length.toLocaleString()})`
+                      : `เลือกผลค้นหาทั้งหมด (${totalSearchCount.toLocaleString()})`}
+                  </span>
+                </button>
+              )}
+
+              {/* Selected in Queue badge if user selected partial cards */}
+              {hasSelected && !isAllPageSelected && !allSearchResultCards && (
+                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-amber-400/15 border border-amber-400/30 text-amber-300 text-xs font-semibold">
+                  <CheckSquare className="w-3.5 h-3.5" />
+                  <span>การ์ดที่เลือกไว้ ({selectedList.length})</span>
+                </span>
+              )}
+
+              {/* Clear button if any cards are selected */}
+              {(cardCount > 0 || allSearchResultCards) && (
+                <button
+                  type="button"
+                  onClick={handleClear}
+                  className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 transition cursor-pointer"
+                  title="ล้างรายการที่เลือกทั้งหมด"
+                >
+                  <Trash2 className="w-3 h-3" />
+                  <span>ล้างการเลือก</span>
+                </button>
+              )}
             </div>
 
-            {/* Quantity Mode */}
-            <div className="flex items-center gap-1.5 bg-[#141724] p-1 rounded-xl border border-white/[0.08]">
-              <button
-                type="button"
-                onClick={() => setQuantityMode("1x")}
-                className={`px-3 py-1.5 rounded-lg font-semibold transition cursor-pointer ${
-                  quantityMode === "1x"
-                    ? "bg-amber-400 text-slate-950 shadow-sm"
-                    : "text-slate-400 hover:text-slate-200"
-                }`}
-                title="ใบละ 1 ใบ สำหรับจัดเด็คหรือเช็คคอลเลกชัน"
-              >
-                1x แต่ละใบ
-              </button>
-              <button
-                type="button"
-                onClick={() => setQuantityMode("stock")}
-                className={`px-3 py-1.5 rounded-lg font-semibold transition cursor-pointer ${
-                  quantityMode === "stock"
-                    ? "bg-amber-400 text-slate-950 shadow-sm"
-                    : "text-slate-400 hover:text-slate-200"
-                }`}
-                title="ใช้จำนวนตามสต็อกที่มีในร้าน LungJi"
-              >
-                ตามสต็อกร้าน
-              </button>
+            {/* Total Count */}
+            <div className="text-[11px] font-mono text-slate-400 shrink-0">
+              รวม: <strong className="text-white text-xs">{cardCount}</strong> ใบ
             </div>
           </div>
 
@@ -213,29 +275,70 @@ export function ArchidektExportModal({
               <span>ใส่หมายเลข Collector Number ด้วย (เช่น <code className="text-amber-300 font-mono">1x Card (som) 109</code>)</span>
             </label>
 
-            <span className="text-[11px] font-mono text-slate-400">
-              รวม: <strong className="text-white">{cardCount}</strong> ใบ (จำนวนทั้งหมด: <strong className="text-amber-300">{totalQuantity}</strong>)
+            <span className="text-[10px] text-slate-500 font-mono hidden sm:inline">
+              ฟอร์แมต 1x ตามมาตรฐาน Archidekt
             </span>
           </div>
         </div>
 
-        {/* Textarea Preview */}
-        <div className="p-4 sm:p-5 flex-1 min-h-[240px] flex flex-col">
-          <div className="relative flex-1">
-            <textarea
-              readOnly
-              value={exportText}
-              className="w-full h-full min-h-[220px] max-h-[360px] p-3.5 bg-[#08090f] border border-white/[0.08] rounded-xl text-xs font-mono text-slate-200 resize-none outline-none focus:border-amber-400/50 select-all leading-relaxed"
-              placeholder="1x Card Name (set) F"
-            />
-          </div>
-
-          <div className="mt-2.5 text-[11px] text-slate-400 flex items-center justify-between">
-            <span>
-              💡 ตัวอย่าง: <code className="text-amber-300 font-mono">1x Akim, the Soaring Wind (c20) F</code>
-            </span>
-            <span className="text-slate-500">Archidekt / Moxfield Native Support</span>
-          </div>
+        {/* Textarea Preview or Empty State */}
+        <div className="p-4 sm:p-5 flex-1 min-h-[260px] flex flex-col">
+          {cardCount === 0 ? (
+            <div className="flex flex-col items-center justify-center p-8 text-center bg-[#08090f] border border-dashed border-white/[0.1] rounded-xl flex-1 min-h-[220px]">
+              <div className="w-12 h-12 rounded-2xl bg-amber-400/10 border border-amber-400/25 flex items-center justify-center text-amber-400 mb-3 shadow-inner">
+                <CheckSquare className="w-6 h-6" />
+              </div>
+              <h3 className="text-sm font-bold text-white mb-1">ยังไม่ได้เลือกการ์ด</h3>
+              <p className="text-xs text-slate-400 max-w-sm mb-4 leading-relaxed">
+                กรุณากดปุ่ม <strong className="text-amber-300 font-semibold">&quot;เลือกทั้งหมด&quot;</strong> เพื่อนำการ์ดเข้าลิสต์ Export ไปยัง Archidekt
+              </p>
+              <div className="flex flex-wrap items-center justify-center gap-2">
+                {currentCards.length > 0 && onToggleSelectAll && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAllSearchResultCards(null);
+                      onToggleSelectAll();
+                    }}
+                    className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-bold transition active:scale-95 shadow-md flex items-center gap-2 cursor-pointer"
+                  >
+                    <CheckSquare className="w-4 h-4" />
+                    <span>เลือกทั้งหมด ({currentCards.length} ใบ)</span>
+                  </button>
+                )}
+                {canFetchAllSearch && (
+                  <button
+                    type="button"
+                    onClick={handleFetchAllSearchResults}
+                    disabled={isLoadingAllResults}
+                    className="px-4 py-2 rounded-xl bg-white/[0.08] hover:bg-white/[0.14] border border-white/[0.12] text-amber-300 text-xs font-semibold transition active:scale-95 flex items-center gap-2 cursor-pointer disabled:opacity-60"
+                  >
+                    {isLoadingAllResults ? (
+                      <span className="w-4 h-4 border-2 border-amber-400 border-t-transparent rounded-full animate-spin" />
+                    ) : (
+                      <Sparkles className="w-4 h-4 text-amber-400" />
+                    )}
+                    <span>เลือกผลค้นหาทั้งหมด ({totalSearchCount.toLocaleString()} ใบ)</span>
+                  </button>
+                )}
+              </div>
+            </div>
+          ) : (
+            <div className="relative flex-1 flex flex-col">
+              <textarea
+                readOnly
+                value={exportText}
+                className="w-full flex-1 min-h-[220px] max-h-[360px] p-3.5 bg-[#08090f] border border-white/[0.08] rounded-xl text-xs font-mono text-slate-200 resize-none outline-none focus:border-amber-400/50 select-all leading-relaxed"
+                placeholder="1x Card Name (set) F"
+              />
+              <div className="mt-2 text-[11px] text-slate-400 flex items-center justify-between">
+                <span>
+                  💡 ตัวอย่าง: <code className="text-amber-300 font-mono">1x Akim, the Soaring Wind (c20) F</code>
+                </span>
+                <span className="text-slate-500">Archidekt / Moxfield Native Support</span>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Footer Actions */}
@@ -246,8 +349,10 @@ export function ArchidektExportModal({
                 <Check className="w-4 h-4" />
                 คัดลอกลิสต์ลง Clipboard แล้ว! พร้อมวางใน Archidekt ได้ทันที
               </span>
-            ) : (
+            ) : cardCount > 0 ? (
               <span>กดคัดลอกแล้วไปวางที่หน้า <strong>Import Deck</strong> บน Archidekt ได้เลย</span>
+            ) : (
+              <span className="text-slate-500">กดปุ่มเลือกการ์ดด้านบนเพื่อเริ่ม Export</span>
             )}
           </div>
 
@@ -255,7 +360,8 @@ export function ArchidektExportModal({
             <button
               type="button"
               onClick={handleDownload}
-              className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-white/[0.06] hover:bg-white/[0.1] border border-white/[0.1] text-slate-200 text-xs font-semibold transition active:scale-95 cursor-pointer"
+              disabled={cardCount === 0}
+              className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-white/[0.06] hover:bg-white/[0.1] border border-white/[0.1] text-slate-200 text-xs font-semibold transition active:scale-95 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
               title="ดาวน์โหลดเป็นไฟล์ text (.txt)"
             >
               <Download className="w-4 h-4 text-slate-300" />
@@ -265,7 +371,8 @@ export function ArchidektExportModal({
             <button
               type="button"
               onClick={handleCopy}
-              className={`flex items-center gap-1.5 px-5 py-2 rounded-xl text-xs font-bold transition active:scale-95 shadow-md cursor-pointer ${
+              disabled={cardCount === 0}
+              className={`flex items-center gap-1.5 px-5 py-2 rounded-xl text-xs font-bold transition active:scale-95 shadow-md cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed ${
                 isCopied
                   ? "bg-emerald-500 text-slate-950 ring-2 ring-emerald-400/50"
                   : "bg-amber-500 hover:bg-amber-400 text-slate-950 ring-2 ring-amber-400/40"
