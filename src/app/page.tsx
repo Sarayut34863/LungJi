@@ -1116,35 +1116,61 @@ export default function HomePage() {
 
   const isAllPageSelected = useMemo(() => {
     if (cards.length === 0) return false;
+    const currentKeys = new Set(cards.map((c) => `${c.id}-${c.sku}`));
+    const prevKeys = Object.keys(selectedCards);
+    const hasForeignCards = prevKeys.some((k) => !currentKeys.has(k));
+    if (hasForeignCards) return false;
     return cards.every((c) => !!selectedCards[`${c.id}-${c.sku}`]);
   }, [cards, selectedCards]);
 
   const handleToggleSelectPage = useCallback(() => {
     setSelectedCards((prev) => {
-      const copy = { ...prev };
-      if (isAllPageSelected) {
+      const currentKeys = new Set(cards.map((c) => `${c.id}-${c.sku}`));
+      const prevKeys = Object.keys(prev);
+      const allCurrentSelected = cards.length > 0 && cards.every((c) => !!prev[`${c.id}-${c.sku}`]);
+      const hasForeignCards = prevKeys.some((k) => !currentKeys.has(k));
+
+      // If all current cards on this page are already selected AND there are no leftover cards from previous searches:
+      // Clicking it unselects this page
+      if (allCurrentSelected && !hasForeignCards) {
+        const copy = { ...prev };
         cards.forEach((c) => {
           delete copy[`${c.id}-${c.sku}`];
         });
-      } else {
-        cards.forEach((c) => {
-          const key = `${c.id}-${c.sku}`;
-          const defaultQty = typeof c.qty_retail === "number" && c.qty_retail > 0 ? c.qty_retail : 1;
-          copy[key] = { card: c, quantity: defaultQty };
-        });
+        return copy;
       }
-      return copy;
+
+      // Otherwise: Overwrite completely with ONLY the current cards!
+      // This allows immediate overwriting ("กดทับได้ทันที") without having to clear first!
+      const nextSelection: Record<string, { card: CKCard; quantity: number }> = {};
+      cards.forEach((c) => {
+        const key = `${c.id}-${c.sku}`;
+        const defaultQty = typeof c.qty_retail === "number" && c.qty_retail > 0 ? c.qty_retail : 1;
+        nextSelection[key] = { card: c, quantity: defaultQty };
+      });
+      return nextSelection;
     });
-  }, [cards, isAllPageSelected]);
+  }, [cards]);
 
   // Search debounce
   const [debouncedQuery, setDebouncedQuery] = useState<string>("");
+  const prevSearchRef = useRef(searchQuery);
+
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedQuery(searchQuery);
       setCurrentPage(1);
     }, 400);
     return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  // Automatically clear selected cards when user switches search query / tribe
+  // so old cards from previous searches never linger in export or queue
+  useEffect(() => {
+    if (prevSearchRef.current !== searchQuery) {
+      prevSearchRef.current = searchQuery;
+      setSelectedCards({});
+    }
   }, [searchQuery]);
 
   // Price Range Slider state (0 to 100 where 100 means $100+) & debounce
