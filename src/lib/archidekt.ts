@@ -14,9 +14,10 @@ export function extractSetCodeFromCard(card: CKCard): string {
     return "";
   }
 
-  // If edition is mapped in editionCodes, check it
-  let mapCode = (editionCodes[card.edition] || "").toLowerCase().trim();
-  if (mapCode === "muma") mapCode = "plst";
+  // Mystery Booster / The List
+  if (card.edition === "Mystery Booster/The List") {
+    return "plst";
+  }
 
   // Also check SKU prefix
   let skuCode = "";
@@ -38,17 +39,17 @@ export function extractSetCodeFromCard(card: CKCard): string {
     }
   }
 
-  // Mystery Booster / The List
-  if (card.edition === "Mystery Booster/The List" || skuCode === "muma" || mapCode === "plst") {
-    return "plst";
+  if (skuCode === "muma") return "plst";
+
+  // If SKU gave a clean 3-character alphanumeric set code, prefer it!
+  // (e.g. SLP for Secret Lair Prize/Promo vs SLD, MOC for March of the Machine Commander vs MOM, FIC vs FIN)
+  if (skuCode && skuCode.length === 3 && /^[a-z0-9]{3}$/.test(skuCode)) {
+    return skuCode;
   }
 
-  // If card is from a Commander deck or SKU is standard 3-char code, prefer SKU code if available
-  if (skuCode && skuCode.length === 3) {
-    if (card.edition.toLowerCase().includes("commander") || skuCode.endsWith("c")) {
-      return skuCode;
-    }
-  }
+  // If edition is mapped in editionCodes, fallback to it
+  let mapCode = (editionCodes[card.edition] || "").toLowerCase().trim();
+  if (mapCode === "muma") mapCode = "plst";
 
   return mapCode || skuCode;
 }
