@@ -9,6 +9,11 @@ export interface FormatArchidektOptions {
 }
 
 export function extractSetCodeFromCard(card: CKCard): string {
+  const edLower = (card.edition || "").toLowerCase().trim();
+  if (edLower === "promotional" || edLower === "promo pack" || edLower.startsWith("promotional")) {
+    return "";
+  }
+
   // If edition is mapped in editionCodes, check it
   let mapCode = (editionCodes[card.edition] || "").toLowerCase().trim();
   if (mapCode === "muma") mapCode = "plst";
@@ -81,9 +86,12 @@ export function formatArchidektCard(
   const isFoil = card.is_foil === "true" || card.is_foil === true || String(card.is_foil) === "1";
   const foilTag = isFoil ? " *F*" : "";
 
-  const setTag = cleanCode ? ` (${cleanCode})` : "";
-  const colTag = colNum ? ` ${colNum}` : "";
+  // If we have a valid set code, include (set) and collector number if present
+  if (cleanCode) {
+    const colTag = colNum ? ` ${colNum}` : "";
+    return `${qty}x ${card.name} (${cleanCode})${colTag}${foilTag}`;
+  }
 
-  // Format: 1x Card Name (set) 123 *F*
-  return `${qty}x ${card.name}${setTag}${colTag}${foilTag}`;
+  // Without a valid set code (e.g. generic promotional cards), omit set and collector number so Archidekt matches cleanly by name
+  return `${qty}x ${card.name}${foilTag}`;
 }

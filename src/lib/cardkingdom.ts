@@ -367,8 +367,9 @@ export async function searchCards(params: SearchParams) {
     cleanSearch = cleanSearch.replace(typeRegex, "").trim();
 
     for (const tTerm of typeFilters) {
-      where.push("type_line LIKE ?");
-      binds.push(`%${tTerm}%`);
+      const normalizedTerm = tTerm.toLowerCase().replace(/[—\-\/]/g, " ").replace(/\s+/g, " ").trim();
+      where.push("(' ' || REPLACE(REPLACE(REPLACE(LOWER(type_line), '—', ' '), '-', ' '), '/', ' ') || ' ') LIKE ?");
+      binds.push(`% ${normalizedTerm} %`);
     }
 
     if (cleanSearch !== "") {
