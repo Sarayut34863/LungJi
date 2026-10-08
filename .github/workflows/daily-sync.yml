@@ -35,7 +35,7 @@ jobs:
           file_pattern: "src/data/cards.db"
 
       - name: Deploy to Vercel (if VERCEL_TOKEN configured)
-        if: env.VERCEL_TOKEN != ''
+        if: ${{ secrets.VERCEL_TOKEN != '' }}
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
