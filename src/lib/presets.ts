@@ -231,6 +231,62 @@ export function syncFiltersToUrl(filters: {
   } catch {}
 }
 
+// Build full shareable URL for any specific preset
+export function buildPresetUrl(filters: {
+  rarities?: string[];
+  colors?: string[];
+  colorMode?: "exact" | "any";
+  foil?: "all" | "foil" | "nonfoil";
+  tokens?: "hide" | "show";
+  minPrice?: number;
+  maxPrice?: number;
+  edition?: string;
+  search?: string;
+  sortBy?: string;
+}): string {
+  if (typeof window === "undefined") return "";
+
+  try {
+    const params = new URLSearchParams();
+
+    if (filters.search && filters.search.trim()) {
+      params.set("q", filters.search.trim());
+    }
+    if (filters.edition && filters.edition !== "all") {
+      params.set("ed", filters.edition);
+    }
+    if (filters.rarities && filters.rarities.length > 0) {
+      params.set("r", filters.rarities.join(","));
+    }
+    if (filters.colors && filters.colors.length > 0) {
+      params.set("c", filters.colors.join(","));
+    }
+    if (filters.colorMode === "any") {
+      params.set("cm", "any");
+    }
+    if (filters.foil && filters.foil !== "all") {
+      params.set("foil", filters.foil);
+    }
+    if (filters.tokens === "show") {
+      params.set("tokens", "show");
+    }
+    if (typeof filters.minPrice === "number" && filters.minPrice > 0) {
+      params.set("min", String(filters.minPrice));
+    }
+    if (typeof filters.maxPrice === "number" && filters.maxPrice < 100) {
+      params.set("max", String(filters.maxPrice));
+    }
+    if (filters.sortBy && filters.sortBy !== "price_desc") {
+      params.set("sort", filters.sortBy);
+    }
+
+    const qs = params.toString();
+    return `${window.location.origin}${window.location.pathname}${qs ? `?${qs}` : ""}`;
+  } catch {
+    return window.location.href;
+  }
+}
+
 // Parse initial filters from URL when opening a link or bookmark
 export function parseFiltersFromUrl(): Partial<FilterPreset> | null {
   if (typeof window === "undefined") return null;

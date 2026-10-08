@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import {
   X,
   Bookmark,
@@ -13,6 +13,7 @@ import {
   Smartphone,
   Copy,
   SlidersHorizontal,
+  ChevronDown,
 } from "lucide-react";
 import QRCode from "qrcode";
 import {
@@ -23,6 +24,7 @@ import {
   deletePresetFromStorage,
   encodePresetCode,
   decodePresetCode,
+  buildPresetUrl,
 } from "@/lib/presets";
 
 interface FilterPresetsModalProps {
@@ -51,10 +53,11 @@ export function FilterPresetsModal({
 }: FilterPresetsModalProps) {
   const [activeTab, setActiveTab] = useState<"library" | "qr" | "code">("library");
   const [savedPresets, setSavedPresets] = useState<FilterPreset[]>([]);
+  const [selectedPresetId, setSelectedPresetId] = useState<string>("current");
   const [newPresetName, setNewPresetName] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [qrCodeUrl, setQrCodeUrl] = useState<string>("");
-  const [currentCode, setCurrentCode] = useState<string>("");
+  const [targetCode, setTargetCode] = useState<string>("");
   const [inputCode, setInputCode] = useState<string>("");
   const [codeError, setCodeError] = useState<string>("");
   const [copiedCode, setCopiedCode] = useState(false);
@@ -69,24 +72,59 @@ export function FilterPresetsModal({
   useEffect(() => {
     if (isOpen) {
       setSavedPresets(getSavedPresets());
-      const code = encodePresetCode(currentFilters);
-      setCurrentCode(code);
-
-      // Generate QR Code with current URL
-      if (typeof window !== "undefined") {
-        QRCode.toDataURL(window.location.href, {
-          width: 260,
-          margin: 1,
-          color: {
-            dark: "#0b0d14",
-            light: "#ffffff",
-          },
-        })
-          .then(setQrCodeUrl)
-          .catch((err) => console.error("QR Code Error:", err));
-      }
     }
-  }, [isOpen, currentFilters]);
+  }, [isOpen]);
+
+  // Combine current filters + saved presets + built-ins
+  const allAvailablePresets = useMemo(() => {
+    const currentOption: FilterPreset = {
+      id: "current",
+      name: "Current Active Filters",
+      createdAt: Date.now(),
+      ...currentFilters,
+    };
+    return [currentOption, ...savedPresets, ...BUILTIN_PRESETS];
+  }, [currentFilters, savedPresets]);
+
+  // The active preset to sync or encode
+  const activeTargetPreset = useMemo(() => {
+    return allAvailablePresets.find((p) => p.id === selectedPresetId) || allAvailablePresets[0];
+  }, [allAvailablePresets, selectedPresetId]);
+
+  // Regenerate QR Code and Preset Code whenever selected preset changes
+  useEffect(() => {
+    if (!isOpen) return;
+
+    // 1. Code
+    const code = encodePresetCode(activeTargetPreset);
+    setTargetCode(code);
+
+    // 2. QR Code URL
+    const targetUrl = buildPresetUrl(activeTargetPreset);
+    if (targetUrl) {
+      QRCode.toDataURL(targetUrl, {
+        width: 320,
+        margin: 1,
+        color: {
+          dark: "#0b0d14",
+          light: "#ffffff",
+        },
+      })
+        .then(setQrCodeUrl)
+        .catch((err) => console.error("QR Code Error:", err));
+    }
+  }, [isOpen, activeTargetPreset]);
+
+  // Close modal when pressing Escape key
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    if (isOpen) {
+      window.addEventListener("keydown", handleKeyDown);
+      return () => window.removeEventListener("keydown", handleKeyDown);
+    }
+  }, [isOpen, onClose]);
 
   if (!isOpen) return null;
 
@@ -99,6 +137,7 @@ export function FilterPresetsModal({
       ...currentFilters,
     });
     setSavedPresets(getSavedPresets());
+    setSelectedPresetId(saved.id);
     setNewPresetName("");
     setIsSaving(false);
     showToast(`Saved "${saved.name}"`);
@@ -107,12 +146,23 @@ export function FilterPresetsModal({
   const handleDelete = (id: string, name: string) => {
     deletePresetFromStorage(id);
     setSavedPresets(getSavedPresets());
+    if (selectedPresetId === id) setSelectedPresetId("current");
     showToast(`Removed "${name}"`);
   };
 
   const handleApply = (preset: Partial<FilterPreset>, name: string) => {
     onApplyPreset(preset);
     onClose();
+  };
+
+  const handleOpenQrForPreset = (id: string) => {
+    setSelectedPresetId(id);
+    setActiveTab("qr");
+  };
+
+  const handleOpenCodeForPreset = (id: string) => {
+    setSelectedPresetId(id);
+    setActiveTab("code");
   };
 
   const handleImportCode = (e: React.FormEvent) => {
@@ -128,68 +178,75 @@ export function FilterPresetsModal({
   };
 
   const handleCopyCode = () => {
-    if (!currentCode) return;
-    navigator.clipboard.writeText(currentCode);
+    if (!targetCode) return;
+    navigator.clipboard.writeText(targetCode);
     setCopiedCode(true);
     setTimeout(() => setCopiedCode(false), 2000);
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="relative w-full max-w-lg bg-[#0e1017] border border-white/[0.08] rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[85vh]">
+    <div
+      onClick={onClose}
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 lg:p-8 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200 cursor-pointer"
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="relative w-full max-w-2xl lg:max-w-3xl bg-[#0e1017] border border-white/[0.08] rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh] cursor-default"
+      >
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-white/[0.06]">
+        <div className="flex items-center justify-between px-6 py-4.5 border-b border-white/[0.06]">
           <div className="flex items-center gap-2.5">
             <SlidersHorizontal className="w-4 h-4 text-amber-400" />
-            <h2 className="text-sm font-semibold text-white tracking-wide">Filter Presets</h2>
+            <h2 className="text-base font-semibold text-white tracking-wide">Filter Presets</h2>
           </div>
           <button
             onClick={onClose}
-            className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-white/[0.06] transition cursor-pointer"
+            className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/[0.06] transition cursor-pointer"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
 
         {/* Minimal Tab Switcher */}
-        <div className="flex border-b border-white/[0.06] px-5 bg-[#0a0c12]">
+        <div className="flex border-b border-white/[0.06] px-6 bg-[#0a0c12]">
           <button
             onClick={() => setActiveTab("library")}
-            className={`py-2.5 px-3 text-xs font-medium border-b-2 transition flex items-center gap-1.5 cursor-pointer ${
+            className={`py-3 px-3.5 text-xs sm:text-sm font-medium border-b-2 transition flex items-center gap-1.5 cursor-pointer ${
               activeTab === "library"
                 ? "border-amber-400 text-amber-300 font-semibold"
                 : "border-transparent text-slate-400 hover:text-slate-200"
             }`}
           >
-            <Bookmark className="w-3.5 h-3.5" />
+            <Bookmark className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
             <span>Presets</span>
           </button>
           <button
             onClick={() => setActiveTab("qr")}
-            className={`py-2.5 px-3 text-xs font-medium border-b-2 transition flex items-center gap-1.5 cursor-pointer ${
+            className={`py-3 px-3.5 text-xs sm:text-sm font-medium border-b-2 transition flex items-center gap-1.5 cursor-pointer ${
               activeTab === "qr"
                 ? "border-amber-400 text-amber-300 font-semibold"
                 : "border-transparent text-slate-400 hover:text-slate-200"
             }`}
           >
-            <QrCode className="w-3.5 h-3.5" />
+            <QrCode className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
             <span>Mobile Sync</span>
           </button>
           <button
             onClick={() => setActiveTab("code")}
-            className={`py-2.5 px-3 text-xs font-medium border-b-2 transition flex items-center gap-1.5 cursor-pointer ${
+            className={`py-3 px-3.5 text-xs sm:text-sm font-medium border-b-2 transition flex items-center gap-1.5 cursor-pointer ${
               activeTab === "code"
                 ? "border-amber-400 text-amber-300 font-semibold"
                 : "border-transparent text-slate-400 hover:text-slate-200"
             }`}
           >
-            <Share2 className="w-3.5 h-3.5" />
+            <Share2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
             <span>Preset Code</span>
           </button>
         </div>
 
         {/* Content Area */}
-        <div className="p-5 overflow-y-auto space-y-5">
+        <div className="p-6 overflow-y-auto space-y-5">
+          
           {/* TAB 1: Library */}
           {activeTab === "library" && (
             <div className="space-y-4">
@@ -262,14 +319,32 @@ export function FilterPresetsModal({
                             )}
                           </div>
                         </button>
-                        <button
-                          type="button"
-                          onClick={() => handleDelete(preset.id, preset.name)}
-                          className="p-1.5 rounded-lg text-slate-500 hover:text-red-400 hover:bg-red-400/10 transition cursor-pointer"
-                          title="Delete preset"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
+                        <div className="flex items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => handleOpenQrForPreset(preset.id)}
+                            className="p-1.5 rounded-lg text-slate-400 hover:text-amber-400 hover:bg-amber-400/10 transition cursor-pointer"
+                            title="Sync this preset to mobile"
+                          >
+                            <QrCode className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleOpenCodeForPreset(preset.id)}
+                            className="p-1.5 rounded-lg text-slate-400 hover:text-amber-400 hover:bg-amber-400/10 transition cursor-pointer"
+                            title="Get code for this preset"
+                          >
+                            <Share2 className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDelete(preset.id, preset.name)}
+                            className="p-1.5 rounded-lg text-slate-500 hover:text-red-400 hover:bg-red-400/10 transition cursor-pointer"
+                            title="Delete preset"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -277,29 +352,51 @@ export function FilterPresetsModal({
               )}
 
               {/* Standard Built-in Presets */}
-              <div className="space-y-2 pt-1">
+              <div className="space-y-2.5 pt-1">
                 <div className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
                   Standard Presets
                 </div>
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   {BUILTIN_PRESETS.map((bp) => (
-                    <button
+                    <div
                       key={bp.id}
-                      type="button"
-                      onClick={() => handleApply(bp, bp.name)}
-                      className="p-2.5 rounded-xl bg-white/[0.02] border border-white/[0.06] hover:border-amber-400/40 text-left transition cursor-pointer group"
+                      className="p-3.5 rounded-xl bg-white/[0.02] border border-white/[0.06] hover:border-amber-400/40 text-left transition group flex items-start justify-between"
                     >
-                      <div className="text-xs font-medium text-slate-200 group-hover:text-amber-300 transition">
-                        {bp.name}
+                      <button
+                        type="button"
+                        onClick={() => handleApply(bp, bp.name)}
+                        className="flex-1 text-left cursor-pointer"
+                      >
+                        <div className="text-xs sm:text-sm font-semibold text-slate-200 group-hover:text-amber-300 transition">
+                          {bp.name}
+                        </div>
+                        <div className="text-xs text-slate-400 mt-1">
+                          {bp.id === "all" && "Clear all filters"}
+                          {bp.id === "high_rares" && "Rare & Mythic cards"}
+                          {bp.id === "multicolor" && "2+ colors cards"}
+                          {bp.id === "foils" && "Foil versions only"}
+                          {bp.id === "budget" && "Under $2 / ~70฿"}
+                        </div>
+                      </button>
+                      <div className="flex items-center gap-1 opacity-60 group-hover:opacity-100 transition pt-0.5">
+                        <button
+                          type="button"
+                          onClick={() => handleOpenQrForPreset(bp.id)}
+                          className="p-1.5 rounded-md text-slate-400 hover:text-amber-400 hover:bg-white/[0.06] transition cursor-pointer"
+                          title="QR for this preset"
+                        >
+                          <QrCode className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleOpenCodeForPreset(bp.id)}
+                          className="p-1.5 rounded-md text-slate-400 hover:text-amber-400 hover:bg-white/[0.06] transition cursor-pointer"
+                          title="Code for this preset"
+                        >
+                          <Share2 className="w-3.5 h-3.5" />
+                        </button>
                       </div>
-                      <div className="text-[10px] text-slate-500 mt-0.5">
-                        {bp.id === "all" && "Clear all filters"}
-                        {bp.id === "high_rares" && "Rare & Mythic cards"}
-                        {bp.id === "multicolor" && "2+ colors cards"}
-                        {bp.id === "foils" && "Foil versions only"}
-                        {bp.id === "budget" && "Under $2 / ~70฿"}
-                      </div>
-                    </button>
+                    </div>
                   ))}
                 </div>
               </div>
@@ -308,28 +405,63 @@ export function FilterPresetsModal({
 
           {/* TAB 2: Method 1 - Mobile Sync (QR Code) */}
           {activeTab === "qr" && (
-            <div className="flex flex-col items-center text-center space-y-4 py-2">
-              <div className="p-3 bg-white rounded-xl shadow-lg border border-white/20">
-                {qrCodeUrl ? (
-                  <img
-                    src={qrCodeUrl}
-                    alt="Filter QR Code"
-                    className="w-48 h-48 block rounded-md"
-                  />
-                ) : (
-                  <div className="w-48 h-48 flex items-center justify-center text-xs text-slate-500">
-                    Generating QR...
-                  </div>
-                )}
-              </div>
-              <div className="space-y-1 max-w-xs">
-                <div className="flex items-center justify-center gap-1.5 text-xs font-medium text-slate-200">
-                  <Smartphone className="w-4 h-4 text-amber-400" />
-                  <span>Scan to open on mobile</span>
+            <div className="space-y-4">
+              {/* Preset Selector Dropdown */}
+              <div className="space-y-1.5 bg-white/[0.02] p-3 rounded-xl border border-white/[0.06]">
+                <label className="text-xs font-medium text-slate-300 flex items-center justify-between">
+                  <span>Select preset to sync:</span>
+                  <span className="text-[10px] text-amber-400 font-mono">
+                    {activeTargetPreset.name}
+                  </span>
+                </label>
+                <div className="relative">
+                  <select
+                    value={selectedPresetId}
+                    onChange={(e) => setSelectedPresetId(e.target.value)}
+                    className="w-full bg-[#0a0c12] border border-white/[0.1] rounded-xl px-3 py-2 text-xs font-medium text-slate-100 outline-none focus:border-amber-400 cursor-pointer appearance-none pr-8"
+                  >
+                    <option value="current">Current Active Filters</option>
+                    {savedPresets.length > 0 && (
+                      <optgroup label="My Saved Presets">
+                        {savedPresets.map((p) => (
+                          <option key={p.id} value={p.id}>{p.name}</option>
+                        ))}
+                      </optgroup>
+                    )}
+                    <optgroup label="Standard Presets">
+                      {BUILTIN_PRESETS.map((bp) => (
+                        <option key={bp.id} value={bp.id}>{bp.name}</option>
+                      ))}
+                    </optgroup>
+                  </select>
+                  <ChevronDown className="w-4 h-4 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                 </div>
-                <p className="text-[11px] text-slate-400 leading-relaxed">
-                  Open your phone camera to scan. The current filter preset will open directly on your mobile browser.
-                </p>
+              </div>
+
+              {/* QR Code Display Card */}
+              <div className="flex flex-col items-center text-center space-y-4 py-2">
+                <div className="p-4 bg-white rounded-2xl shadow-xl border border-white/20">
+                  {qrCodeUrl ? (
+                    <img
+                      src={qrCodeUrl}
+                      alt="Filter QR Code"
+                      className="w-56 h-56 sm:w-64 sm:h-64 block rounded-md"
+                    />
+                  ) : (
+                    <div className="w-56 h-56 sm:w-64 sm:h-64 flex items-center justify-center text-xs text-slate-500">
+                      Generating QR...
+                    </div>
+                  )}
+                </div>
+                <div className="space-y-1.5 max-w-sm">
+                  <div className="flex items-center justify-center gap-1.5 text-xs sm:text-sm font-semibold text-slate-200">
+                    <Smartphone className="w-4 h-4 text-amber-400" />
+                    <span>Point phone camera to scan</span>
+                  </div>
+                  <p className="text-xs text-slate-400 leading-relaxed">
+                    Instantly opens &apos;{activeTargetPreset.name}&apos; on your mobile browser.
+                  </p>
+                </div>
               </div>
             </div>
           )}
@@ -337,16 +469,45 @@ export function FilterPresetsModal({
           {/* TAB 3: Method 2 - Preset Code (Deck-Code style) */}
           {activeTab === "code" && (
             <div className="space-y-4">
-              {/* Export current code */}
-              <div className="space-y-1.5">
-                <label className="text-xs font-medium text-slate-300">
-                  Current Filter Code
+              {/* Preset Selector Dropdown */}
+              <div className="space-y-1.5 bg-white/[0.02] p-3 rounded-xl border border-white/[0.06]">
+                <label className="text-xs font-medium text-slate-300 flex items-center justify-between">
+                  <span>Select preset to get code:</span>
+                  <span className="text-[10px] text-amber-400 font-mono">
+                    {activeTargetPreset.name}
+                  </span>
                 </label>
+                <div className="relative">
+                  <select
+                    value={selectedPresetId}
+                    onChange={(e) => setSelectedPresetId(e.target.value)}
+                    className="w-full bg-[#0a0c12] border border-white/[0.1] rounded-xl px-3 py-2 text-xs font-medium text-slate-100 outline-none focus:border-amber-400 cursor-pointer appearance-none pr-8"
+                  >
+                    <option value="current">Current Active Filters</option>
+                    {savedPresets.length > 0 && (
+                      <optgroup label="My Saved Presets">
+                        {savedPresets.map((p) => (
+                          <option key={p.id} value={p.id}>{p.name}</option>
+                        ))}
+                      </optgroup>
+                    )}
+                    <optgroup label="Standard Presets">
+                      {BUILTIN_PRESETS.map((bp) => (
+                        <option key={bp.id} value={bp.id}>{bp.name}</option>
+                      ))}
+                    </optgroup>
+                  </select>
+                  <ChevronDown className="w-4 h-4 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                </div>
+              </div>
+
+              {/* Code Box */}
+              <div className="space-y-1.5">
                 <div className="flex items-center gap-2">
                   <input
                     type="text"
                     readOnly
-                    value={currentCode}
+                    value={targetCode}
                     className="flex-1 bg-[#090b10] border border-white/[0.08] rounded-lg px-3 py-2 text-xs font-mono text-slate-300 select-all outline-none"
                   />
                   <button
@@ -359,12 +520,12 @@ export function FilterPresetsModal({
                   </button>
                 </div>
                 <p className="text-[10px] text-slate-500">
-                  Share this code with friends or paste it on another device to load this exact filter.
+                  Share this code with friends or paste it on another device to load &apos;{activeTargetPreset.name}&apos;.
                 </p>
               </div>
 
               {/* Import code */}
-              <form onSubmit={handleImportCode} className="space-y-2 pt-2 border-t border-white/[0.06]">
+              <form onSubmit={handleImportCode} className="space-y-2 pt-3 border-t border-white/[0.06]">
                 <label className="text-xs font-medium text-slate-300">
                   Load Preset from Code
                 </label>
