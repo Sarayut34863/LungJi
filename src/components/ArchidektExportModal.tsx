@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { X, Copy, Check, Download, FileText, CheckSquare, Sparkles, Trash2, Square } from "lucide-react";
 import type { CKCard } from "@/lib/cardkingdom";
 import { formatArchidektCard } from "@/lib/archidekt";
@@ -102,6 +102,17 @@ export function ArchidektExportModal({
     };
   }, [activeExportCards]);
 
+  // Close modal when pressing Escape key
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    if (isOpen) {
+      window.addEventListener("keydown", handleKeyDown);
+      return () => window.removeEventListener("keydown", handleKeyDown);
+    }
+  }, [isOpen, onClose]);
+
   if (!isOpen) return null;
 
   const handleCopy = async () => {
@@ -140,9 +151,12 @@ export function ArchidektExportModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 md:p-8 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
+    <div
+      onClick={onClose}
+      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 md:p-8 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200 cursor-pointer"
+    >
       <div
-        className="w-full max-w-4xl lg:max-w-5xl bg-[#0e111a] border border-white/[0.1] rounded-2xl shadow-2xl overflow-hidden flex flex-col h-[85vh] max-h-[850px]"
+        className="w-full max-w-4xl lg:max-w-5xl bg-[#0e111a] border border-white/[0.1] rounded-2xl shadow-2xl overflow-hidden flex flex-col h-[85vh] max-h-[850px] cursor-default"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
