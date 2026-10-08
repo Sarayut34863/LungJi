@@ -31,8 +31,13 @@ import {
   ArrowUp,
   ArrowDown,
   Menu,
+  Bookmark,
+  QrCode,
+  Share2,
 } from "lucide-react";
 import { CKCard, EditionSummary } from "@/lib/cardkingdom";
+import { FilterPresetsModal } from "@/components/FilterPresetsModal";
+import { FilterPreset, syncFiltersToUrl, parseFiltersFromUrl } from "@/lib/presets";
 
 // Official Card Kingdom Castle Rook Icon (Archidekt / Card Kingdom Brand Icon)
 export function CardKingdomIcon({ className = "w-3.5 h-2.5" }: { className?: string }) {
@@ -119,56 +124,56 @@ export const COLOR_OPTIONS = [
     code: "W",
     label: "White",
     short: "W",
-    activeClass: "bg-amber-100/20 text-amber-100 border-amber-200/40 ring-1 ring-amber-100/20",
+    activeClass: "bg-amber-100/15 text-amber-100 border-amber-200/40 font-semibold",
     inactiveClass: "text-amber-100/70 hover:text-amber-100 hover:bg-white/[0.03]",
   },
   {
     code: "U",
     label: "Blue",
     short: "U",
-    activeClass: "bg-blue-500/20 text-blue-400 border-blue-400/40 ring-1 ring-blue-400/20",
+    activeClass: "bg-blue-500/15 text-blue-400 border-blue-400/40 font-semibold",
     inactiveClass: "text-blue-400/70 hover:text-blue-400 hover:bg-white/[0.03]",
   },
   {
     code: "B",
     label: "Black",
     short: "B",
-    activeClass: "bg-purple-900/30 text-purple-300 border-purple-400/40 ring-1 ring-purple-400/20",
+    activeClass: "bg-purple-900/25 text-purple-300 border-purple-400/40 font-semibold",
     inactiveClass: "text-purple-300/70 hover:text-purple-300 hover:bg-white/[0.03]",
   },
   {
     code: "R",
     label: "Red",
     short: "R",
-    activeClass: "bg-red-500/20 text-red-400 border-red-400/40 ring-1 ring-red-400/20",
+    activeClass: "bg-red-500/15 text-red-400 border-red-400/40 font-semibold",
     inactiveClass: "text-red-400/70 hover:text-red-400 hover:bg-white/[0.03]",
   },
   {
     code: "G",
     label: "Green",
     short: "G",
-    activeClass: "bg-emerald-500/20 text-emerald-400 border-emerald-400/40 ring-1 ring-emerald-400/20",
+    activeClass: "bg-emerald-500/15 text-emerald-400 border-emerald-400/40 font-semibold",
     inactiveClass: "text-emerald-400/70 hover:text-emerald-400 hover:bg-white/[0.03]",
   },
   {
     code: "M",
     label: "Multicolor",
     short: "M",
-    activeClass: "bg-amber-500/25 text-amber-300 border-amber-400/50 ring-1 ring-amber-400/30",
+    activeClass: "bg-amber-500/20 text-amber-300 border-amber-400/50 font-semibold",
     inactiveClass: "text-amber-400/70 hover:text-amber-300 hover:bg-white/[0.03]",
   },
   {
     code: "C",
     label: "Colorless",
     short: "C",
-    activeClass: "bg-slate-500/20 text-slate-300 border-slate-400/40 ring-1 ring-slate-400/20",
+    activeClass: "bg-slate-500/15 text-slate-300 border-slate-400/40 font-semibold",
     inactiveClass: "text-slate-400/70 hover:text-slate-300 hover:bg-white/[0.03]",
   },
   {
     code: "L",
     label: "Land",
     short: "L",
-    activeClass: "bg-stone-700/40 text-stone-200 border-stone-500/50 ring-1 ring-stone-400/20",
+    activeClass: "bg-stone-700/30 text-stone-200 border-stone-500/50 font-semibold",
     inactiveClass: "text-stone-400/70 hover:text-stone-300 hover:bg-white/[0.03]",
   },
 ];
@@ -1117,6 +1122,86 @@ export default function HomePage() {
     return () => clearTimeout(timer);
   }, [sliderMin, sliderMax]);
 
+  // Filter Presets Modal state
+  const [isPresetsModalOpen, setIsPresetsModalOpen] = useState<boolean>(false);
+
+  // Request persistent storage to protect client data and presets from browser eviction
+  useEffect(() => {
+    if (typeof window !== "undefined" && navigator.storage && navigator.storage.persist) {
+      navigator.storage.persist().catch(() => {});
+    }
+  }, []);
+
+  // Parse filters from URL on initial load (seamless restore for bookmarks, links, QR sync)
+  useEffect(() => {
+    const urlFilters = parseFiltersFromUrl();
+    if (urlFilters) {
+      if (urlFilters.search !== undefined) setSearchQuery(urlFilters.search);
+      if (urlFilters.edition !== undefined) setSelectedEdition(urlFilters.edition);
+      if (urlFilters.rarities) setSelectedRarities(urlFilters.rarities);
+      if (urlFilters.colors) setSelectedColors(urlFilters.colors);
+      if (urlFilters.colorMode) setColorMode(urlFilters.colorMode);
+      if (urlFilters.foil) setFoilFilter(urlFilters.foil);
+      if (urlFilters.tokens) setTokenFilter(urlFilters.tokens);
+      if (urlFilters.minPrice !== undefined) {
+        setSliderMin(urlFilters.minPrice);
+        setDebouncedMin(urlFilters.minPrice);
+      }
+      if (urlFilters.maxPrice !== undefined) {
+        setSliderMax(urlFilters.maxPrice);
+        setDebouncedMax(urlFilters.maxPrice);
+      }
+      if (urlFilters.sortBy) setSortBy(urlFilters.sortBy);
+    }
+  }, []);
+
+  // Silently synchronize filters to URL bar (clean, seamless, no UI intrusion)
+  useEffect(() => {
+    syncFiltersToUrl({
+      search: debouncedQuery,
+      edition: selectedEdition,
+      rarities: selectedRarities,
+      colors: selectedColors,
+      colorMode,
+      foil: foilFilter,
+      tokens: tokenFilter,
+      minPrice: debouncedMin,
+      maxPrice: debouncedMax,
+      sortBy,
+    });
+  }, [
+    debouncedQuery,
+    selectedEdition,
+    selectedRarities,
+    selectedColors,
+    colorMode,
+    foilFilter,
+    tokenFilter,
+    debouncedMin,
+    debouncedMax,
+    sortBy,
+  ]);
+
+  const handleApplyPreset = (preset: Partial<FilterPreset>) => {
+    if (preset.rarities !== undefined) setSelectedRarities(preset.rarities);
+    if (preset.colors !== undefined) setSelectedColors(preset.colors);
+    if (preset.colorMode !== undefined) setColorMode(preset.colorMode);
+    if (preset.foil !== undefined) setFoilFilter(preset.foil);
+    if (preset.tokens !== undefined) setTokenFilter(preset.tokens);
+    if (preset.minPrice !== undefined) {
+      setSliderMin(preset.minPrice);
+      setDebouncedMin(preset.minPrice);
+    }
+    if (preset.maxPrice !== undefined) {
+      setSliderMax(preset.maxPrice);
+      setDebouncedMax(preset.maxPrice);
+    }
+    if (preset.edition !== undefined) setSelectedEdition(preset.edition);
+    if (preset.search !== undefined) setSearchQuery(preset.search);
+    if (preset.sortBy !== undefined) setSortBy(preset.sortBy);
+    setCurrentPage(1);
+  };
+
   // Load editions list
   const loadEditions = useCallback(async () => {
     try {
@@ -1530,6 +1615,28 @@ export default function HomePage() {
                 )}
               </div>
 
+              {/* Filter Presets Control (Load Presets & Save Current) */}
+              <div className="flex items-center gap-1.5 border-b border-white/[0.06] pb-3">
+                <button
+                  type="button"
+                  onClick={() => setIsPresetsModalOpen(true)}
+                  className="flex-1 py-1.5 px-2.5 rounded-lg bg-white/[0.03] hover:bg-white/[0.07] border border-white/[0.07] text-xs font-medium text-slate-200 flex items-center justify-center gap-1.5 transition cursor-pointer"
+                  title="Open filter presets"
+                >
+                  <Bookmark className="w-3.5 h-3.5 text-amber-400" />
+                  <span>Presets</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsPresetsModalOpen(true)}
+                  className="py-1.5 px-2.5 rounded-lg bg-amber-400/10 hover:bg-amber-400/18 border border-amber-400/25 text-amber-300 text-xs font-medium flex items-center gap-1 transition cursor-pointer"
+                  title="Save current filters as preset"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>Save</span>
+                </button>
+              </div>
+
               {/* Card Name Filter */}
               <div className="space-y-1.5 border-b border-white/[0.06] pb-3.5">
                 <label className="text-xs font-semibold text-slate-200">Card Name</label>
@@ -1615,7 +1722,7 @@ export default function HomePage() {
                     onClick={() => toggleRarity("uncommon")}
                     className={`py-1.5 text-xs font-bold rounded-md transition cursor-pointer ${
                       selectedRarities.includes("uncommon")
-                        ? "bg-slate-300/15 text-slate-200 border border-slate-300/30 ring-1 ring-white/10"
+                        ? "bg-slate-300/15 text-slate-200 border border-slate-300/40"
                         : "text-slate-400 hover:text-slate-200 hover:bg-white/[0.03]"
                     }`}
                     title="Uncommon"
@@ -1627,7 +1734,7 @@ export default function HomePage() {
                     onClick={() => toggleRarity("rare")}
                     className={`py-1.5 text-xs font-bold rounded-md transition cursor-pointer ${
                       selectedRarities.includes("rare")
-                        ? "bg-amber-400/20 text-amber-300 border border-amber-400/40 ring-1 ring-amber-400/20"
+                        ? "bg-amber-400/20 text-amber-300 border border-amber-400/40"
                         : "text-amber-400/70 hover:text-amber-300 hover:bg-white/[0.03]"
                     }`}
                     title="Rare"
@@ -1639,7 +1746,7 @@ export default function HomePage() {
                     onClick={() => toggleRarity("mythic")}
                     className={`py-1.5 text-xs font-bold rounded-md transition cursor-pointer ${
                       selectedRarities.includes("mythic")
-                        ? "bg-[#c2410c]/20 text-[#fb923c] border border-[#c2410c]/40 ring-1 ring-[#c2410c]/20"
+                        ? "bg-[#c2410c]/20 text-[#fb923c] border border-[#c2410c]/40"
                         : "text-[#fb923c]/70 hover:text-[#fb923c] hover:bg-white/[0.03]"
                     }`}
                     title="Mythic Rare"
@@ -2269,6 +2376,25 @@ export default function HomePage() {
             thbMultiplier={thbMultiplier}
           />
         )}
+
+        {/* Filter Presets Modal (Presets Library, Mobile QR Sync, Preset Codes) */}
+        <FilterPresetsModal
+          isOpen={isPresetsModalOpen}
+          onClose={() => setIsPresetsModalOpen(false)}
+          currentFilters={{
+            search: searchQuery,
+            edition: selectedEdition,
+            rarities: selectedRarities,
+            colors: selectedColors,
+            colorMode,
+            foil: foilFilter,
+            tokens: tokenFilter,
+            minPrice: sliderMin,
+            maxPrice: sliderMax,
+            sortBy,
+          }}
+          onApplyPreset={handleApplyPreset}
+        />
       </div>
 
       {/* Dedicated Print Canvas for Paper Output (Hidden on screen, active in @media print) */}
