@@ -255,8 +255,23 @@ export async function searchCards(params: SearchParams) {
         break;
       }
     }
-    where.push("edition = ?");
-    binds.push(targetEdition);
+    if (params.variants === "show" && !targetEdition.endsWith(" Variants")) {
+      const targetEditions = [
+        targetEdition,
+        `${targetEdition} Variants`,
+        `${targetEdition} Eternal-Legal Variants`,
+      ];
+      if (targetEdition === "Modern Horizons") {
+        targetEditions.push("Modern Horizons - Retro Frames");
+      } else if (targetEdition === "The Brothers' War") {
+        targetEditions.push("The Brothers' War Retro Artifacts");
+      }
+      where.push(`edition IN (${targetEditions.map(() => "?").join(",")})`);
+      binds.push(...targetEditions);
+    } else {
+      where.push("edition = ?");
+      binds.push(targetEdition);
+    }
   }
 
   if (rarity && rarity !== "all") {
@@ -477,7 +492,7 @@ export async function searchCards(params: SearchParams) {
 
   const orderClause = parseSortOrder(sortBy);
 
-  const hideVariants = params.variants !== "show"; // Default: hide variants (เอาเฉพาะใบเดียวในรุ่นเดียว ไม่เอา borderless)
+  const hideVariants = params.variants !== "show" && !(edition && edition.trim().endsWith(" Variants")); // Default: hide variants (เอาเฉพาะใบเดียวในรุ่นเดียว ไม่เอา borderless)
 
   let countSql = `SELECT COUNT(*) as total FROM cards ${whereClause}`;
   let dataSql = `SELECT * FROM cards ${whereClause} ${orderClause} LIMIT ? OFFSET ?`;
