@@ -1690,34 +1690,67 @@ export default function HomePage() {
               </div>
             </button>
 
-            {/* Top Right: Export Archidekt & Print Studio Buttons */}
-            <div className="flex items-center gap-2">
+            {/* Top Right: Quick Color Cycle, Export Archidekt & Print Studio Buttons */}
+            <div className="flex items-center gap-1.5 sm:gap-2">
+              {/* Quick Color Cycle - Left of Export */}
+              <div className="inline-flex items-center bg-[#11131c] rounded-xl border border-white/[0.08] p-0.5 shadow-sm text-xs">
+                {/* Prev Color Button */}
+                <button
+                  type="button"
+                  onClick={handlePrevColor}
+                  className="p-1 sm:p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/[0.06] active:scale-95 transition cursor-pointer"
+                  title={`สีก่อนหน้า: ${prevColorOption.label}`}
+                >
+                  <ChevronLeft className="w-3.5 h-3.5" />
+                </button>
+
+                {/* Current Color Status Display */}
+                <button
+                  type="button"
+                  onClick={handleNextColor}
+                  className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-semibold border transition cursor-pointer ${currentColorOption.bgClass} ${currentColorOption.textColor}`}
+                  title={`สีปัจจุบัน: ${currentColorOption.label} (กดเพื่อเปลี่ยนเป็นสีถัดไป)`}
+                >
+                  <span className="w-1.5 h-1.5 rounded-full bg-current opacity-80" />
+                  <span>{currentColorOption.shortLabel}</span>
+                </button>
+
+                {/* Next Button */}
+                <button
+                  type="button"
+                  onClick={handleNextColor}
+                  className="inline-flex items-center gap-0.5 px-2 py-1 rounded-lg text-xs font-semibold text-amber-300 hover:text-amber-200 hover:bg-white/[0.06] active:scale-95 transition cursor-pointer"
+                  title={`เปลี่ยนเป็นสีถัดไป: ${nextColorOption.label}`}
+                >
+                  <span>Next</span>
+                  <ChevronRight className="w-3.5 h-3.5 text-amber-400" />
+                </button>
+              </div>
+
+              {/* Export Button (Logo/Icon only) */}
               <button
                 type="button"
                 onClick={() => setIsArchidektModalOpen(true)}
-                className="flex items-center gap-1.5 px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-xl text-xs sm:text-sm font-semibold transition active:scale-95 bg-white/[0.05] hover:bg-white/[0.1] text-amber-300 border border-amber-400/30 hover:border-amber-400/50 shadow-md cursor-pointer"
-                title="Export list to Archidekt / Moxfield format"
+                className="p-2 sm:px-2.5 sm:py-2 rounded-xl text-xs sm:text-sm font-semibold transition active:scale-95 bg-white/[0.05] hover:bg-white/[0.1] text-amber-300 border border-amber-400/30 hover:border-amber-400/50 shadow-md cursor-pointer flex items-center justify-center"
+                title="Export to Archidekt"
               >
                 <FileDown className="w-4 h-4 text-amber-400" />
-                <span className="hidden sm:inline">Export Archidekt</span>
-                <span className="sm:hidden">Export</span>
               </button>
 
+              {/* Print Button (Logo/Icon only) */}
               <button
                 type="button"
                 onClick={() => setIsPrintModalOpen(true)}
-                className={`relative flex items-center gap-2 px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl text-xs sm:text-sm font-semibold transition active:scale-95 shadow-md cursor-pointer ${
+                className={`relative p-2 sm:px-2.5 sm:py-2 rounded-xl text-xs sm:text-sm font-semibold transition active:scale-95 shadow-md cursor-pointer flex items-center justify-center ${
                   totalPrintCardCount > 0
                     ? "bg-amber-500 hover:bg-amber-400 text-slate-950 ring-2 ring-amber-400/40"
                     : "bg-white/[0.06] hover:bg-white/[0.1] text-slate-300 border border-white/[0.08]"
                 }`}
-                title="Open Card Print Studio"
+                title="Print Studio"
               >
                 <Printer className="w-4 h-4" />
-                <span className="hidden sm:inline">Print Cards</span>
-                <span className="sm:hidden">Print</span>
                 {totalPrintCardCount > 0 && (
-                  <span className="px-1.5 py-0.5 rounded-full bg-slate-950 text-amber-300 text-[11px] font-bold font-mono">
+                  <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-slate-950 text-amber-300 text-[10px] font-bold font-mono flex items-center justify-center border border-amber-400/40 shadow-sm">
                     {totalPrintCardCount}
                   </span>
                 )}
@@ -2366,41 +2399,6 @@ export default function HomePage() {
               <span className="text-slate-400">
                 Found <strong className="font-mono tabular-nums text-white font-semibold">{totalCount.toLocaleString()}</strong> cards
               </span>
-
-              {/* Mobile Quick Color Cycle - Visible on mobile only */}
-              <div className="inline-flex sm:hidden items-center bg-[#0b0d14] rounded-lg border border-white/[0.08] p-0.5 shadow-sm text-xs">
-                {/* Prev Color Button */}
-                <button
-                  type="button"
-                  onClick={handlePrevColor}
-                  className="p-1 rounded-md text-slate-400 hover:text-white hover:bg-white/[0.06] active:scale-95 transition cursor-pointer"
-                  title={`สีก่อนหน้า: ${prevColorOption.label}`}
-                >
-                  <ChevronLeft className="w-3.5 h-3.5" />
-                </button>
-
-                {/* Current Color Status Display (แสดงสถานะสีปัจจุบันอย่างชัดเจน) */}
-                <button
-                  type="button"
-                  onClick={handleNextColor}
-                  className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold border transition cursor-pointer ${currentColorOption.bgClass} ${currentColorOption.textColor}`}
-                  title={`สีปัจจุบัน: ${currentColorOption.label} (กดเพื่อเปลี่ยนเป็นสีถัดไป)`}
-                >
-                  <span className="w-1.5 h-1.5 rounded-full bg-current opacity-80" />
-                  <span>{currentColorOption.shortLabel}</span>
-                </button>
-
-                {/* Next Button */}
-                <button
-                  type="button"
-                  onClick={handleNextColor}
-                  className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-md text-[11px] font-semibold text-amber-300 hover:text-amber-200 hover:bg-white/[0.06] active:scale-95 transition cursor-pointer"
-                  title={`เปลี่ยนเป็นสีถัดไป: ${nextColorOption.label}`}
-                >
-                  <span>Next</span>
-                  <ChevronRight className="w-3 h-3 text-amber-400" />
-                </button>
-              </div>
 
               {/* Select All (เลือกทั้งหมด) Button */}
               {cards.length > 0 && (
