@@ -1052,6 +1052,41 @@ export default function HomePage() {
     );
   };
 
+  // Mobile Quick Color Cycle (White -> Blue -> Black -> Red -> Green -> Multicolor -> Colorless -> Land)
+  const { nextColorOption, prevColorOption } = useMemo(() => {
+    const CYCLE_COLORS = [
+      { code: "W", label: "White", shortLabel: "White", textColor: "text-amber-100" },
+      { code: "U", label: "Blue", shortLabel: "Blue", textColor: "text-blue-400" },
+      { code: "B", label: "Black", shortLabel: "Black", textColor: "text-purple-300" },
+      { code: "R", label: "Red", shortLabel: "Red", textColor: "text-red-400" },
+      { code: "G", label: "Green", shortLabel: "Green", textColor: "text-emerald-400" },
+      { code: "M", label: "Multicolor", shortLabel: "Multi", textColor: "text-amber-300" },
+      { code: "C", label: "Colorless", shortLabel: "Colorless", textColor: "text-slate-300" },
+      { code: "L", label: "Land", shortLabel: "Land", textColor: "text-stone-300" },
+    ];
+    const currentIndex =
+      selectedColors.length === 1 ? CYCLE_COLORS.findIndex((c) => c.code === selectedColors[0]) : -1;
+    const nextIndex = currentIndex === -1 ? 0 : (currentIndex + 1) % CYCLE_COLORS.length;
+    const prevIndex =
+      currentIndex === -1
+        ? CYCLE_COLORS.length - 1
+        : (currentIndex - 1 + CYCLE_COLORS.length) % CYCLE_COLORS.length;
+    return {
+      nextColorOption: CYCLE_COLORS[nextIndex],
+      prevColorOption: CYCLE_COLORS[prevIndex],
+    };
+  }, [selectedColors]);
+
+  const handleNextColor = () => {
+    setCurrentPage(1);
+    setSelectedColors([nextColorOption.code]);
+  };
+
+  const handlePrevColor = () => {
+    setCurrentPage(1);
+    setSelectedColors([prevColorOption.code]);
+  };
+
   // Cards data
   const [cards, setCards] = useState<CKCard[]>([]);
   const [totalCount, setTotalCount] = useState<number>(0);
@@ -2278,6 +2313,28 @@ export default function HomePage() {
               <span className="text-slate-400">
                 Found <strong className="font-mono tabular-nums text-white font-semibold">{totalCount.toLocaleString()}</strong> cards
               </span>
+
+              {/* Mobile Quick Color Cycle (Next Color) - Visible on mobile only */}
+              <div className="inline-flex sm:hidden items-center bg-[#0b0d14] rounded-lg border border-white/[0.08] p-0.5 shadow-sm">
+                <button
+                  type="button"
+                  onClick={handlePrevColor}
+                  className="p-1 rounded-md text-slate-400 hover:text-white hover:bg-white/[0.06] active:scale-95 transition cursor-pointer"
+                  title={`สีก่อนหน้า: ${prevColorOption.label}`}
+                >
+                  <ChevronLeft className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  type="button"
+                  onClick={handleNextColor}
+                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold text-amber-300 hover:bg-white/[0.06] active:scale-95 transition cursor-pointer"
+                  title={`เปลี่ยนไปเป็นสีถัดไป (${nextColorOption.label})`}
+                >
+                  <span className="text-slate-400 font-normal">Next:</span>
+                  <span className={`font-bold ${nextColorOption.textColor}`}>{nextColorOption.shortLabel}</span>
+                  <ChevronRight className="w-3 h-3 text-amber-400" />
+                </button>
+              </div>
 
               {/* Select All (เลือกทั้งหมด) Button */}
               {cards.length > 0 && (
