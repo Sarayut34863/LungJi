@@ -1052,7 +1052,7 @@ export default function HomePage() {
     );
   };
 
-  // Mobile Quick Color Cycle (All -> White -> Blue -> Black -> Red -> Green -> Multicolor -> Colorless -> Land)
+  // Mobile Quick Color Cycle (All -> White -> Blue -> Black -> Red -> Green -> Colorless -> Land)
   const COLOR_CYCLE_LIST = useMemo(
     () => [
       { code: "ALL", label: "All Colors", shortLabel: "All", textColor: "text-slate-300", bgClass: "bg-white/[0.06] border-white/[0.08]" },
@@ -1061,7 +1061,6 @@ export default function HomePage() {
       { code: "B", label: "Black", shortLabel: "Black", textColor: "text-purple-300", bgClass: "bg-purple-900/25 border-purple-400/40" },
       { code: "R", label: "Red", shortLabel: "Red", textColor: "text-red-400", bgClass: "bg-red-500/15 border-red-400/40" },
       { code: "G", label: "Green", shortLabel: "Green", textColor: "text-emerald-400", bgClass: "bg-emerald-500/15 border-emerald-400/40" },
-      { code: "M", label: "Multicolor", shortLabel: "Multi", textColor: "text-amber-300", bgClass: "bg-amber-500/20 border-amber-400/50" },
       { code: "C", label: "Colorless", shortLabel: "Colorless", textColor: "text-slate-300", bgClass: "bg-slate-500/15 border-slate-400/40" },
       { code: "L", label: "Land", shortLabel: "Land", textColor: "text-stone-300", bgClass: "bg-stone-700/30 border-stone-500/40" },
     ],
@@ -1074,6 +1073,15 @@ export default function HomePage() {
       return COLOR_CYCLE_LIST[0]; // ALL
     }
     if (selectedColors.length === 1) {
+      if (selectedColors[0] === "M") {
+        return {
+          code: "M",
+          label: "Multicolor",
+          shortLabel: "Multi",
+          textColor: "text-amber-300",
+          bgClass: "bg-amber-500/20 border-amber-400/50",
+        };
+      }
       const found = COLOR_CYCLE_LIST.find((c) => c.code === selectedColors[0]);
       return (
         found || {
@@ -1100,7 +1108,7 @@ export default function HomePage() {
       currentIndex = 0; // ALL
     } else if (selectedColors.length === 1) {
       const idx = COLOR_CYCLE_LIST.findIndex((c) => c.code === selectedColors[0]);
-      currentIndex = idx >= 0 ? idx : 0;
+      currentIndex = idx >= 0 ? idx : (selectedColors[0] === "M" ? 5 : 0);
     } else {
       currentIndex = 0;
     }
