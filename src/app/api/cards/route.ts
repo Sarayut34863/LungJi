@@ -18,6 +18,8 @@ export async function GET(request: NextRequest) {
     const colorMode = (searchParams.get("colorMode") as SearchParams["colorMode"]) || "exact";
     const tokens = (searchParams.get("tokens") as SearchParams["tokens"]) || "hide";
     const variants = (searchParams.get("variants") as SearchParams["variants"]) || "hide";
+    const basicLands = (searchParams.get("basicLands") as SearchParams["basicLands"]) || "art";
+    const mechanic = (searchParams.get("mechanic") as SearchParams["mechanic"]) || "hide";
     const inStock = searchParams.get("inStock") === "true";
     const minPriceParam = searchParams.get("minPrice");
     const maxPriceParam = searchParams.get("maxPrice");
@@ -36,6 +38,8 @@ export async function GET(request: NextRequest) {
       colorMode,
       tokens,
       variants,
+      basicLands,
+      mechanic,
       inStock,
       minPrice,
       maxPrice,

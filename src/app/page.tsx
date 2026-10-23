@@ -973,6 +973,8 @@ export default function HomePage() {
   const [foilFilter, setFoilFilter] = useState<"all" | "foil" | "nonfoil">("all");
   const [tokenFilter, setTokenFilter] = useState<"hide" | "show">("hide");
   const [variantsFilter, setVariantsFilter] = useState<"hide" | "show">("hide"); // Default: "hide" (เอาเฉพาะใบเดียวในรุ่นเดียว ไม่เอา borderless)
+  const [basicLandsFilter, setBasicLandsFilter] = useState<"art" | "all">("art"); // Default: "art" (ซ่อนเบสิกแลนด์กากๆ ปกติ เอาเฉพาะ Full Art / Special Art)
+  const [mechanicFilter, setMechanicFilter] = useState<"hide" | "show">("hide"); // Default: "hide" (ไม่สนเมคคานิก Devoid ตามสีมานา ไม่เข้า Colorless)
   const [selectedRarities, setSelectedRarities] = useState<string[]>([]);
   const [selectedColors, setSelectedColors] = useState<string[]>([]);
   const [colorMode, setColorMode] = useState<"exact" | "any">("exact");
@@ -1266,6 +1268,8 @@ export default function HomePage() {
     (foilFilter !== "all" ? 1 : 0) +
     (tokenFilter !== "hide" ? 1 : 0) +
     (variantsFilter !== "hide" ? 1 : 0) +
+    (basicLandsFilter !== "art" ? 1 : 0) +
+    (mechanicFilter !== "hide" ? 1 : 0) +
     selectedRarities.length +
     selectedColors.length +
     (sliderMin > 0 || sliderMax < 100 ? 1 : 0);
@@ -1301,6 +1305,8 @@ export default function HomePage() {
       if (urlFilters.foil) setFoilFilter(urlFilters.foil);
       if (urlFilters.tokens) setTokenFilter(urlFilters.tokens);
       if (urlFilters.variants) setVariantsFilter(urlFilters.variants);
+      if (urlFilters.basicLands) setBasicLandsFilter(urlFilters.basicLands);
+      if (urlFilters.mechanic) setMechanicFilter(urlFilters.mechanic);
       if (urlFilters.minPrice !== undefined) {
         setSliderMin(urlFilters.minPrice);
         setDebouncedMin(urlFilters.minPrice);
@@ -1324,6 +1330,8 @@ export default function HomePage() {
       foil: foilFilter,
       tokens: tokenFilter,
       variants: variantsFilter,
+      basicLands: basicLandsFilter,
+      mechanic: mechanicFilter,
       minPrice: debouncedMin,
       maxPrice: debouncedMax,
       sortBy,
@@ -1425,7 +1433,7 @@ export default function HomePage() {
       const colorParam = selectedColors.length === 0 ? "all" : selectedColors.join(",");
       const minPriceQuery = debouncedMin > 0 ? String(debouncedMin) : "";
       const maxPriceQuery = debouncedMax < 100 ? String(debouncedMax) : "";
-      const cacheKey = `${selectedEdition}|${debouncedQuery}|${foilFilter}|${tokenFilter}|${variantsFilter}|${rarityParam}|${colorParam}|${colorMode}|${minPriceQuery}|${maxPriceQuery}|${sortBy}|${currentPage}|${rowsPerPage}`;
+      const cacheKey = `${selectedEdition}|${debouncedQuery}|${foilFilter}|${tokenFilter}|${variantsFilter}|${basicLandsFilter}|${mechanicFilter}|${rarityParam}|${colorParam}|${colorMode}|${minPriceQuery}|${maxPriceQuery}|${sortBy}|${currentPage}|${rowsPerPage}`;
 
       // Check cache first (0ms instant response)
       const cached = queryCacheRef.current.get(cacheKey);
@@ -1501,7 +1509,7 @@ export default function HomePage() {
         }
       }
     },
-    [selectedEdition, debouncedQuery, foilFilter, tokenFilter, variantsFilter, selectedRarities, selectedColors, colorMode, debouncedMin, debouncedMax, sortBy, currentPage, rowsPerPage]
+    [selectedEdition, debouncedQuery, foilFilter, tokenFilter, variantsFilter, basicLandsFilter, mechanicFilter, selectedRarities, selectedColors, colorMode, debouncedMin, debouncedMax, sortBy, currentPage, rowsPerPage]
   );
 
   useEffect(() => {
@@ -1518,7 +1526,7 @@ export default function HomePage() {
       const colorParam = selectedColors.length === 0 ? "all" : selectedColors.join(",");
       const minPriceQuery = debouncedMin > 0 ? String(debouncedMin) : "";
       const maxPriceQuery = debouncedMax < 100 ? String(debouncedMax) : "";
-      const nextKey = `${selectedEdition}|${debouncedQuery}|${foilFilter}|${tokenFilter}|${variantsFilter}|${rarityParam}|${colorParam}|${colorMode}|${minPriceQuery}|${maxPriceQuery}|${sortBy}|${nextPage}|${rowsPerPage}`;
+      const nextKey = `${selectedEdition}|${debouncedQuery}|${foilFilter}|${tokenFilter}|${variantsFilter}|${basicLandsFilter}|${mechanicFilter}|${rarityParam}|${colorParam}|${colorMode}|${minPriceQuery}|${maxPriceQuery}|${sortBy}|${nextPage}|${rowsPerPage}`;
 
       if (!queryCacheRef.current.has(nextKey)) {
         const params = new URLSearchParams({
@@ -1559,7 +1567,7 @@ export default function HomePage() {
     }, 1500);
 
     return () => clearTimeout(prefetchTimer);
-  }, [currentPage, totalPages, isLoading, cards.length, selectedEdition, debouncedQuery, foilFilter, tokenFilter, variantsFilter, selectedRarities, selectedColors, colorMode, debouncedMin, debouncedMax, sortBy, rowsPerPage]);
+  }, [currentPage, totalPages, isLoading, cards.length, selectedEdition, debouncedQuery, foilFilter, tokenFilter, variantsFilter, basicLandsFilter, mechanicFilter, selectedRarities, selectedColors, colorMode, debouncedMin, debouncedMax, sortBy, rowsPerPage]);
 
   // Auto-sync data in the background every 30 minutes
   useEffect(() => {
@@ -1577,6 +1585,8 @@ export default function HomePage() {
     setFoilFilter("all");
     setTokenFilter("hide");
     setVariantsFilter("hide");
+    setBasicLandsFilter("art");
+    setMechanicFilter("hide");
     setSelectedRarities([]);
     setSelectedColors([]);
     setColorMode("exact");
@@ -2229,6 +2239,116 @@ export default function HomePage() {
                 </div>
               </div>
 
+              {/* Basic Lands Filter (Default: Art Only / ซ่อนเบสิกแลนด์กากๆ เอาแต่อาร์ท) */}
+              <div className="space-y-1.5 border-b border-white/[0.06] pb-3.5">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5">
+                    <label className="text-xs font-semibold text-slate-200">Basic Lands</label>
+                    <span className="text-[10px] text-slate-400 font-normal">(เอาแต่อาร์ท)</span>
+                  </div>
+                  {basicLandsFilter === "all" && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setBasicLandsFilter("art");
+                        setCurrentPage(1);
+                      }}
+                      className="text-[10px] text-amber-400 hover:text-amber-300 transition cursor-pointer"
+                      title="ซ่อนเบสิกแลนด์ธรรมดา (เอาเฉพาะ Full Art)"
+                    >
+                      Reset
+                    </button>
+                  )}
+                </div>
+                <div className="grid grid-cols-2 gap-1 bg-[#0b0d14] p-1 rounded-lg border border-white/[0.06]">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setBasicLandsFilter("art");
+                      setCurrentPage(1);
+                    }}
+                    className={`py-1.5 text-xs font-medium rounded-md transition cursor-pointer text-center ${
+                      basicLandsFilter === "art"
+                        ? "bg-amber-400/15 text-amber-300 border border-amber-400/30 font-semibold"
+                        : "text-slate-400 hover:text-slate-200"
+                    }`}
+                    title="ซ่อนเบสิกแลนด์ปกติ แสดงเฉพาะ Full Art / Special Art"
+                  >
+                    Art Only
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setBasicLandsFilter("all");
+                      setCurrentPage(1);
+                    }}
+                    className={`py-1.5 text-xs font-medium rounded-md transition cursor-pointer text-center ${
+                      basicLandsFilter === "all"
+                        ? "bg-white/[0.08] text-white font-semibold border border-white/[0.08]"
+                        : "text-slate-400 hover:text-slate-200"
+                    }`}
+                    title="แสดงเบสิกแลนด์ทุกแบบ (รวมแบบธรรมดา)"
+                  >
+                    All Lands
+                  </button>
+                </div>
+              </div>
+
+              {/* Mechanic Filter (Default: Hide / ไม่สนเมคคานิก Devoid ไม่เข้า Colorless) */}
+              <div className="space-y-1.5 border-b border-white/[0.06] pb-3.5">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5">
+                    <label className="text-xs font-semibold text-slate-200">Mechanic</label>
+                    <span className="text-[10px] text-slate-400 font-normal">(Devoid)</span>
+                  </div>
+                  {mechanicFilter === "show" && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMechanicFilter("hide");
+                        setCurrentPage(1);
+                      }}
+                      className="text-[10px] text-amber-400 hover:text-amber-300 transition cursor-pointer"
+                      title="ไม่นับเมคคานิก (จัดตามสีมานา)"
+                    >
+                      Reset
+                    </button>
+                  )}
+                </div>
+                <div className="grid grid-cols-2 gap-1 bg-[#0b0d14] p-1 rounded-lg border border-white/[0.06]">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMechanicFilter("hide");
+                      setCurrentPage(1);
+                    }}
+                    className={`py-1.5 text-xs font-medium rounded-md transition cursor-pointer text-center ${
+                      mechanicFilter === "hide"
+                        ? "bg-white/[0.08] text-white font-semibold border border-white/[0.08]"
+                        : "text-slate-400 hover:text-slate-200"
+                    }`}
+                    title="ไม่สนเมคคานิก (Devoid จะจัดตามสีมานาจริง ไม่เข้า Colorless)"
+                  >
+                    Ignore
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMechanicFilter("show");
+                      setCurrentPage(1);
+                    }}
+                    className={`py-1.5 text-xs font-medium rounded-md transition cursor-pointer text-center ${
+                      mechanicFilter === "show"
+                        ? "bg-amber-400/15 text-amber-300 border border-amber-400/30 font-semibold"
+                        : "text-slate-400 hover:text-slate-200"
+                    }`}
+                    title="นับเมคคานิกตามกฎ MTG (Devoid ทั้งหมดจะกลายเป็น Colorless)"
+                  >
+                    Official MTG
+                  </button>
+                </div>
+              </div>
+
               {/* Dual-Range Price Slider */}
               <PriceRangeSlider
                 minVal={sliderMin}
@@ -2481,6 +2601,34 @@ export default function HomePage() {
                       <X className="w-3 h-3 text-amber-400/70 group-hover:text-amber-300 shrink-0" />
                     </button>
                   )}
+                  {basicLandsFilter === "all" && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setBasicLandsFilter("art");
+                        setCurrentPage(1);
+                      }}
+                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-400/10 hover:bg-amber-400/15 border border-amber-400/25 text-amber-300 text-[11px] transition group"
+                      title="แสดงเฉพาะ Full Art Basic Lands"
+                    >
+                      <span>Basic Lands: All</span>
+                      <X className="w-3 h-3 text-amber-400/70 group-hover:text-amber-300 shrink-0" />
+                    </button>
+                  )}
+                  {mechanicFilter === "show" && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMechanicFilter("hide");
+                        setCurrentPage(1);
+                      }}
+                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-400/10 hover:bg-amber-400/15 border border-amber-400/25 text-amber-300 text-[11px] transition group"
+                      title="ไม่นับเมคคานิก (จัดตามสีมานา)"
+                    >
+                      <span>Mechanic: MTG Rules</span>
+                      <X className="w-3 h-3 text-amber-400/70 group-hover:text-amber-300 shrink-0" />
+                    </button>
+                  )}
                   {selectedRarities.length > 0 &&
                     selectedRarities.map((r) => (
                       <button
@@ -2692,32 +2840,72 @@ export default function HomePage() {
         </main>
 
         {/* Footer */}
-        <footer className="mt-auto border-t border-white/[0.06] bg-[#0b0d14]/60 py-6 text-center text-xs text-slate-500 space-y-1">
-          <p>
-            LungJi • Prices from{" "}
-            <a
-              href="https://www.cardkingdom.com"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-slate-400 hover:text-amber-400 underline underline-offset-2 transition-colors"
-            >
-              Card Kingdom
-            </a>{" "}
-            • Images via{" "}
-            <a
-              href="https://scryfall.com"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-slate-400 hover:text-amber-400 underline underline-offset-2 transition-colors"
-            >
-              Scryfall
-            </a>
-          </p>
-          {metaInfo.created_at && (
-            <p className="text-[11px] text-slate-500 font-mono tabular-nums">
-              Catalog updated: {metaInfo.created_at}
-            </p>
-          )}
+        <footer className="mt-auto border-t border-white/[0.06] bg-[#0b0d14]/60 py-6 px-4 sm:px-6">
+          <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
+            {/* Left / Center Info */}
+            <div className="text-center sm:text-left text-xs text-slate-500 space-y-1">
+              <p>
+                LungJi • Prices from{" "}
+                <a
+                  href="https://www.cardkingdom.com"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-slate-400 hover:text-amber-400 underline underline-offset-2 transition-colors"
+                >
+                  Card Kingdom
+                </a>{" "}
+                • Images via{" "}
+                <a
+                  href="https://scryfall.com"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-slate-400 hover:text-amber-400 underline underline-offset-2 transition-colors"
+                >
+                  Scryfall
+                </a>
+              </p>
+              {metaInfo.created_at && (
+                <p className="text-[11px] text-slate-500 font-mono tabular-nums">
+                  Catalog updated: {metaInfo.created_at}
+                </p>
+              )}
+            </div>
+
+            {/* Right: Quick Color Cycle Control */}
+            <div className="inline-flex items-center bg-[#11131c] rounded-xl border border-white/[0.08] p-0.5 shadow-sm text-xs shrink-0">
+              {/* Prev Color Button */}
+              <button
+                type="button"
+                onClick={handlePrevColor}
+                className="p-1 sm:p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/[0.06] active:scale-95 transition cursor-pointer"
+                title={`สีก่อนหน้า: ${prevColorOption.label}`}
+              >
+                <ChevronLeft className="w-3.5 h-3.5" />
+              </button>
+
+              {/* Current Color Status Display */}
+              <button
+                type="button"
+                onClick={handleNextColor}
+                className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-semibold border transition cursor-pointer ${currentColorOption.bgClass} ${currentColorOption.textColor}`}
+                title={`สีปัจจุบัน: ${currentColorOption.label} (กดเพื่อเปลี่ยนเป็นสีถัดไป)`}
+              >
+                <span className="w-1.5 h-1.5 rounded-full bg-current opacity-80" />
+                <span>{currentColorOption.shortLabel}</span>
+              </button>
+
+              {/* Next Button */}
+              <button
+                type="button"
+                onClick={handleNextColor}
+                className="inline-flex items-center gap-0.5 px-2 py-1 rounded-lg text-xs font-semibold text-amber-300 hover:text-amber-200 hover:bg-white/[0.06] active:scale-95 transition cursor-pointer"
+                title={`เปลี่ยนเป็นสีถัดไป: ${nextColorOption.label}`}
+              >
+                <span>Next</span>
+                <ChevronRight className="w-3.5 h-3.5 text-amber-400" />
+              </button>
+            </div>
+          </div>
         </footer>
 
         {/* Floating mobile print button */}

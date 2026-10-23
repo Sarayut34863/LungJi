@@ -8,6 +8,8 @@ export interface FilterPreset {
   foil: "all" | "foil" | "nonfoil";
   tokens: "hide" | "show";
   variants?: "hide" | "show";
+  basicLands?: "art" | "all";
+  mechanic?: "hide" | "show";
   minPrice: number;
   maxPrice: number;
   edition?: string;
@@ -112,6 +114,8 @@ export function syncFiltersToUrl(filters: {
   foil?: "all" | "foil" | "nonfoil";
   tokens?: "hide" | "show";
   variants?: "hide" | "show";
+  basicLands?: "art" | "all";
+  mechanic?: "hide" | "show";
   minPrice?: number;
   maxPrice?: number;
   edition?: string;
@@ -147,6 +151,12 @@ export function syncFiltersToUrl(filters: {
     if (filters.variants === "show") {
       params.set("variants", "show");
     }
+    if (filters.basicLands && filters.basicLands !== "art") {
+      params.set("lands", filters.basicLands);
+    }
+    if (filters.mechanic && filters.mechanic !== "hide") {
+      params.set("mech", filters.mechanic);
+    }
     if (typeof filters.minPrice === "number" && filters.minPrice > 0) {
       params.set("min", String(filters.minPrice));
     }
@@ -173,6 +183,8 @@ export function buildPresetUrl(filters: {
   foil?: "all" | "foil" | "nonfoil";
   tokens?: "hide" | "show";
   variants?: "hide" | "show";
+  basicLands?: "art" | "all";
+  mechanic?: "hide" | "show";
   minPrice?: number;
   maxPrice?: number;
   edition?: string;
@@ -254,6 +266,12 @@ export function parseFiltersFromUrl(): Partial<FilterPreset> | null {
     }
     if (params.has("variants")) {
       result.variants = params.get("variants") === "show" ? "show" : "hide";
+    }
+    if (params.has("lands")) {
+      result.basicLands = params.get("lands") === "all" ? "all" : "art";
+    }
+    if (params.has("mech")) {
+      result.mechanic = params.get("mech") === "show" ? "show" : "hide";
     }
     if (params.has("min")) {
       const min = parseFloat(params.get("min") || "0");

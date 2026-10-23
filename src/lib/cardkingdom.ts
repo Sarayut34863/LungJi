@@ -56,6 +56,8 @@ export interface SearchParams {
   colorMode?: "exact" | "any";
   tokens?: "hide" | "show";
   variants?: "hide" | "show";
+  basicLands?: "art" | "all";
+  mechanic?: "hide" | "show";
   inStock?: boolean;
   minPrice?: number;
   maxPrice?: number;
@@ -246,6 +248,11 @@ export async function searchCards(params: SearchParams) {
     where.push("clean_name NOT LIKE '%token%' AND edition NOT LIKE '%token%'");
   }
 
+  // Basic Lands filter (Default: art - ซ่อนเบสิกแลนด์กากๆ ปกติ เอาเฉพาะ Full Art / Special Art)
+  if (params.basicLands !== "all") {
+    where.push(`NOT (clean_name IN ('Plains', 'Island', 'Swamp', 'Mountain', 'Forest', 'Wastes', 'Snow-Covered Plains', 'Snow-Covered Island', 'Snow-Covered Swamp', 'Snow-Covered Mountain', 'Snow-Covered Forest') AND is_full_art_land = 0)`);
+  }
+
   if (edition && edition !== "all") {
     let targetEdition = edition.trim();
     const upper = targetEdition.toUpperCase();
@@ -355,13 +362,21 @@ export async function searchCards(params: SearchParams) {
           }
         }
       } else if (specialColors.length > 0 && manaColors.length === 0) {
-        where.push(`color IN (${specialColors.map(() => "?").join(",")})`);
+        if (params.mechanic === "show" && specialColors.includes("C")) {
+          where.push(`(color IN (${specialColors.map(() => "?").join(",")}) OR is_devoid = 1)`);
+        } else {
+          where.push(`color IN (${specialColors.map(() => "?").join(",")})`);
+        }
         binds.push(...specialColors);
       } else if (manaColors.length > 0 && specialColors.length > 0) {
         const targets = manaColors.length === 1 ? [manaColors[0], ...specialColors] : [combo, ...specialColors];
         where.push(`color IN (${targets.map(() => "?").join(",")})`);
         binds.push(...targets);
       }
+    }
+
+    if (params.mechanic === "show" && !specialColors.includes("C")) {
+      where.push("is_devoid = 0");
     }
   }
 
@@ -553,6 +568,8 @@ export async function searchCards(params: SearchParams) {
     collector_number: number | null;
     color: string | null;
     color_order: number | null;
+    is_devoid?: number;
+    is_full_art_land?: number;
     type_line: string | null;
   }[];
 
@@ -579,7 +596,7 @@ export async function searchCards(params: SearchParams) {
       qty_buying: r.qty_buying || 0,
       condition_values: conds,
       collector_number: typeof r.collector_number === "number" && r.collector_number < 900000 ? r.collector_number : undefined,
-      color: r.color || undefined,
+      color: (params.mechanic === "show" && r.is_devoid === 1) ? "C" : (r.color || undefined),
       color_order: typeof r.color_order === "number" ? r.color_order : undefined,
       type_line: r.type_line || undefined,
     };

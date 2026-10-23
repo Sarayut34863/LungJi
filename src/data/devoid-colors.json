@@ -1,0 +1,793 @@
+{
+  "abstruse appropriation": {
+    "name": "Abstruse Appropriation",
+    "mana_cost": "{2}{W}{B}",
+    "color": "WB",
+    "order": 5
+  },
+  "abstruse interference": {
+    "name": "Abstruse Interference",
+    "mana_cost": "{2}{U}",
+    "color": "U",
+    "order": 1
+  },
+  "adverse conditions": {
+    "name": "Adverse Conditions",
+    "mana_cost": "{3}{U}",
+    "color": "U",
+    "order": 1
+  },
+  "angelic aberration": {
+    "name": "Angelic Aberration",
+    "mana_cost": "{5}{W}",
+    "color": "W",
+    "order": 0
+  },
+  "barrage tyrant": {
+    "name": "Barrage Tyrant",
+    "mana_cost": "{4}{R}",
+    "color": "R",
+    "order": 3
+  },
+  "basking broodscale": {
+    "name": "Basking Broodscale",
+    "mana_cost": "{1}{G}",
+    "color": "G",
+    "order": 4
+  },
+  "bearer of silence": {
+    "name": "Bearer of Silence",
+    "mana_cost": "{1}{B}",
+    "color": "B",
+    "order": 2
+  },
+  "benthic anomaly": {
+    "name": "Benthic Anomaly",
+    "mana_cost": "{6}{U}",
+    "color": "U",
+    "order": 1
+  },
+  "benthic infiltrator": {
+    "name": "Benthic Infiltrator",
+    "mana_cost": "{2}{U}",
+    "color": "U",
+    "order": 1
+  },
+  "birthing hulk": {
+    "name": "Birthing Hulk",
+    "mana_cost": "{6}{G}",
+    "color": "G",
+    "order": 4
+  },
+  "bismuth mindrender": {
+    "name": "Bismuth Mindrender",
+    "mana_cost": "{3}{B}",
+    "color": "B",
+    "order": 2
+  },
+  "blinding drone": {
+    "name": "Blinding Drone",
+    "mana_cost": "{1}{U}",
+    "color": "U",
+    "order": 1
+  },
+  "blisterpod": {
+    "name": "Blisterpod",
+    "mana_cost": "{G}",
+    "color": "G",
+    "order": 4
+  },
+  "brood butcher": {
+    "name": "Brood Butcher",
+    "mana_cost": "{3}{B}{G}",
+    "color": "BG",
+    "order": 5
+  },
+  "brood monitor": {
+    "name": "Brood Monitor",
+    "mana_cost": "{4}{G}{G}",
+    "color": "G",
+    "order": 4
+  },
+  "brutal expulsion": {
+    "name": "Brutal Expulsion",
+    "mana_cost": "{2}{U}{R}",
+    "color": "UR",
+    "order": 5
+  },
+  "call the scions": {
+    "name": "Call the Scions",
+    "mana_cost": "{2}{G}",
+    "color": "G",
+    "order": 4
+  },
+  "catacomb sifter": {
+    "name": "Catacomb Sifter",
+    "mana_cost": "{1}{B}{G}",
+    "color": "BG",
+    "order": 5
+  },
+  "chittering dispatcher": {
+    "name": "Chittering Dispatcher",
+    "mana_cost": "{2}{G}",
+    "color": "G",
+    "order": 4
+  },
+  "complete disregard": {
+    "name": "Complete Disregard",
+    "mana_cost": "{2}{B}",
+    "color": "B",
+    "order": 2
+  },
+  "consuming sinkhole": {
+    "name": "Consuming Sinkhole",
+    "mana_cost": "{3}{R}",
+    "color": "R",
+    "order": 3
+  },
+  "corrupted shapeshifter": {
+    "name": "Corrupted Shapeshifter",
+    "mana_cost": "{3}{U}",
+    "color": "U",
+    "order": 1
+  },
+  "crumble to dust": {
+    "name": "Crumble to Dust",
+    "mana_cost": "{3}{R}",
+    "color": "R",
+    "order": 3
+  },
+  "cryptic cruiser": {
+    "name": "Cryptic Cruiser",
+    "mana_cost": "{3}{U}",
+    "color": "U",
+    "order": 1
+  },
+  "culling drone": {
+    "name": "Culling Drone",
+    "mana_cost": "{1}{B}",
+    "color": "B",
+    "order": 2
+  },
+  "cultivator drone": {
+    "name": "Cultivator Drone",
+    "mana_cost": "{2}{U}",
+    "color": "U",
+    "order": 1
+  },
+  "deepfathom skulker": {
+    "name": "Deepfathom Skulker",
+    "mana_cost": "{5}{U}",
+    "color": "U",
+    "order": 1
+  },
+  "depth defiler": {
+    "name": "Depth Defiler",
+    "mana_cost": "{3}{U}{U}",
+    "color": "U",
+    "order": 1
+  },
+  "dimensional infiltrator": {
+    "name": "Dimensional Infiltrator",
+    "mana_cost": "{1}{U}",
+    "color": "U",
+    "order": 1
+  },
+  "dominator drone": {
+    "name": "Dominator Drone",
+    "mana_cost": "{2}{B}",
+    "color": "B",
+    "order": 2
+  },
+  "dread defiler": {
+    "name": "Dread Defiler",
+    "mana_cost": "{6}{B}",
+    "color": "B",
+    "order": 2
+  },
+  "drowner of hope": {
+    "name": "Drowner of Hope",
+    "mana_cost": "{5}{U}",
+    "color": "U",
+    "order": 1
+  },
+  "drowner of truth // drowned jungle": {
+    "name": "Drowner of Truth // Drowned Jungle",
+    "color": "C",
+    "order": 7
+  },
+  "dust stalker": {
+    "name": "Dust Stalker",
+    "mana_cost": "{2}{B}{R}",
+    "color": "BR",
+    "order": 5
+  },
+  "eldrazi aggressor": {
+    "name": "Eldrazi Aggressor",
+    "mana_cost": "{2}{R}",
+    "color": "R",
+    "order": 3
+  },
+  "eldrazi displacer": {
+    "name": "Eldrazi Displacer",
+    "mana_cost": "{2}{W}",
+    "color": "W",
+    "order": 0
+  },
+  "eldrazi linebreaker": {
+    "name": "Eldrazi Linebreaker",
+    "mana_cost": "{1}{C}{R}",
+    "color": "R",
+    "order": 3
+  },
+  "eldrazi obligator": {
+    "name": "Eldrazi Obligator",
+    "mana_cost": "{2}{R}",
+    "color": "R",
+    "order": 3
+  },
+  "eldrazi repurposer": {
+    "name": "Eldrazi Repurposer",
+    "mana_cost": "{2}{G}",
+    "color": "G",
+    "order": 4
+  },
+  "eldrazi skyspawner": {
+    "name": "Eldrazi Skyspawner",
+    "mana_cost": "{2}{U}",
+    "color": "U",
+    "order": 1
+  },
+  "emrakul's messenger": {
+    "name": "Emrakul's Messenger",
+    "mana_cost": "{1}{U}",
+    "color": "U",
+    "order": 1
+  },
+  "essence depleter": {
+    "name": "Essence Depleter",
+    "mana_cost": "{2}{B}",
+    "color": "B",
+    "order": 2
+  },
+  "eyeless watcher": {
+    "name": "Eyeless Watcher",
+    "mana_cost": "{3}{G}",
+    "color": "G",
+    "order": 4
+  },
+  "fanged flames": {
+    "name": "Fanged Flames",
+    "mana_cost": "{1}{R}",
+    "color": "R",
+    "order": 3
+  },
+  "fathom feeder": {
+    "name": "Fathom Feeder",
+    "mana_cost": "{U}{B}",
+    "color": "UB",
+    "order": 5
+  },
+  "flayer drone": {
+    "name": "Flayer Drone",
+    "mana_cost": "{1}{B}{R}",
+    "color": "BR",
+    "order": 5
+  },
+  "flaying tendrils": {
+    "name": "Flaying Tendrils",
+    "mana_cost": "{1}{B}{B}",
+    "color": "B",
+    "order": 2
+  },
+  "forerunner of slaughter": {
+    "name": "Forerunner of Slaughter",
+    "mana_cost": "{B}{R}",
+    "color": "BR",
+    "order": 5
+  },
+  "from beyond": {
+    "name": "From Beyond",
+    "mana_cost": "{3}{G}",
+    "color": "G",
+    "order": 4
+  },
+  "ghostfire slice": {
+    "name": "Ghostfire Slice",
+    "mana_cost": "{2}{R}",
+    "color": "R",
+    "order": 3
+  },
+  "grave birthing": {
+    "name": "Grave Birthing",
+    "mana_cost": "{2}{B}",
+    "color": "B",
+    "order": 2
+  },
+  "gravity negator": {
+    "name": "Gravity Negator",
+    "mana_cost": "{3}{U}",
+    "color": "U",
+    "order": 1
+  },
+  "grip of desolation": {
+    "name": "Grip of Desolation",
+    "mana_cost": "{4}{B}{B}",
+    "color": "B",
+    "order": 2
+  },
+  "havoc sower": {
+    "name": "Havoc Sower",
+    "mana_cost": "{3}{B}",
+    "color": "B",
+    "order": 2
+  },
+  "herald of kozilek": {
+    "name": "Herald of Kozilek",
+    "mana_cost": "{1}{U}{R}",
+    "color": "UR",
+    "order": 5
+  },
+  "hideous taskmaster": {
+    "name": "Hideous Taskmaster",
+    "mana_cost": "{6}{R}",
+    "color": "R",
+    "order": 3
+  },
+  "hope-ender coatl": {
+    "name": "Hope-Ender Coatl",
+    "mana_cost": "{2}{U}",
+    "color": "U",
+    "order": 1
+  },
+  "horribly awry": {
+    "name": "Horribly Awry",
+    "mana_cost": "{1}{U}",
+    "color": "U",
+    "order": 1
+  },
+  "immobilizer eldrazi": {
+    "name": "Immobilizer Eldrazi",
+    "mana_cost": "{1}{R}",
+    "color": "R",
+    "order": 3
+  },
+  "incubator drone": {
+    "name": "Incubator Drone",
+    "mana_cost": "{3}{U}",
+    "color": "U",
+    "order": 1
+  },
+  "inverter of truth": {
+    "name": "Inverter of Truth",
+    "mana_cost": "{2}{B}{B}",
+    "color": "B",
+    "order": 2
+  },
+  "kozilek's return": {
+    "name": "Kozilek's Return",
+    "mana_cost": "{2}{R}",
+    "color": "R",
+    "order": 3
+  },
+  "kozilek's sentinel": {
+    "name": "Kozilek's Sentinel",
+    "mana_cost": "{1}{R}",
+    "color": "R",
+    "order": 3
+  },
+  "kozilek's shrieker": {
+    "name": "Kozilek's Shrieker",
+    "mana_cost": "{2}{B}",
+    "color": "B",
+    "order": 2
+  },
+  "kozilek's translator": {
+    "name": "Kozilek's Translator",
+    "mana_cost": "{4}{B}",
+    "color": "B",
+    "order": 2
+  },
+  "kozilek's unsealing": {
+    "name": "Kozilek's Unsealing",
+    "mana_cost": "{2}{U}",
+    "color": "U",
+    "order": 1
+  },
+  "maw of kozilek": {
+    "name": "Maw of Kozilek",
+    "mana_cost": "{3}{R}",
+    "color": "R",
+    "order": 3
+  },
+  "mindmelter": {
+    "name": "Mindmelter",
+    "mana_cost": "{1}{U}{B}",
+    "color": "UB",
+    "order": 5
+  },
+  "mind raker": {
+    "name": "Mind Raker",
+    "mana_cost": "{3}{B}",
+    "color": "B",
+    "order": 2
+  },
+  "mist intruder": {
+    "name": "Mist Intruder",
+    "mana_cost": "{1}{U}",
+    "color": "U",
+    "order": 1
+  },
+  "molten nursery": {
+    "name": "Molten Nursery",
+    "mana_cost": "{2}{R}",
+    "color": "R",
+    "order": 3
+  },
+  "murk strider": {
+    "name": "Murk Strider",
+    "mana_cost": "{3}{U}",
+    "color": "U",
+    "order": 1
+  },
+  "mutated cultist": {
+    "name": "Mutated Cultist",
+    "mana_cost": "{2}{B}",
+    "color": "B",
+    "order": 2
+  },
+  "nettle drone": {
+    "name": "Nettle Drone",
+    "mana_cost": "{2}{R}",
+    "color": "R",
+    "order": 3
+  },
+  "oblivion strike": {
+    "name": "Oblivion Strike",
+    "mana_cost": "{3}{B}",
+    "color": "B",
+    "order": 2
+  },
+  "oracle of dust": {
+    "name": "Oracle of Dust",
+    "mana_cost": "{4}{U}",
+    "color": "U",
+    "order": 1
+  },
+  "path of annihilation": {
+    "name": "Path of Annihilation",
+    "mana_cost": "{3}{G}",
+    "color": "G",
+    "order": 4
+  },
+  "petrifying meddler": {
+    "name": "Petrifying Meddler",
+    "mana_cost": "{4}{U}",
+    "color": "U",
+    "order": 1
+  },
+  "processor assault": {
+    "name": "Processor Assault",
+    "mana_cost": "{1}{R}",
+    "color": "R",
+    "order": 3
+  },
+  "propagator drone": {
+    "name": "Propagator Drone",
+    "mana_cost": "{1}{G}",
+    "color": "G",
+    "order": 4
+  },
+  "prophet of distortion": {
+    "name": "Prophet of Distortion",
+    "mana_cost": "{U}",
+    "color": "U",
+    "order": 1
+  },
+  "reality hemorrhage": {
+    "name": "Reality Hemorrhage",
+    "mana_cost": "{1}{R}",
+    "color": "R",
+    "order": 3
+  },
+  "reaver drone": {
+    "name": "Reaver Drone",
+    "mana_cost": "{B}",
+    "color": "B",
+    "order": 2
+  },
+  "ruination guide": {
+    "name": "Ruination Guide",
+    "mana_cost": "{2}{U}",
+    "color": "U",
+    "order": 1
+  },
+  "ruin in their wake": {
+    "name": "Ruin in Their Wake",
+    "mana_cost": "{1}{G}",
+    "color": "G",
+    "order": 4
+  },
+  "salvage drone": {
+    "name": "Salvage Drone",
+    "mana_cost": "{U}",
+    "color": "U",
+    "order": 1
+  },
+  "scion summoner": {
+    "name": "Scion Summoner",
+    "mana_cost": "{2}{G}",
+    "color": "G",
+    "order": 4
+  },
+  "serpentine spike": {
+    "name": "Serpentine Spike",
+    "mana_cost": "{5}{R}{R}",
+    "color": "R",
+    "order": 3
+  },
+  "sifter of skulls": {
+    "name": "Sifter of Skulls",
+    "mana_cost": "{3}{B}",
+    "color": "B",
+    "order": 2
+  },
+  "silent skimmer": {
+    "name": "Silent Skimmer",
+    "mana_cost": "{3}{B}",
+    "color": "B",
+    "order": 2
+  },
+  "sire of stagnation": {
+    "name": "Sire of Stagnation",
+    "mana_cost": "{4}{U}{B}",
+    "color": "UB",
+    "order": 5
+  },
+  "skittering precursor": {
+    "name": "Skittering Precursor",
+    "mana_cost": "{2}{R}",
+    "color": "R",
+    "order": 3
+  },
+  "skitterskin": {
+    "name": "Skitterskin",
+    "mana_cost": "{3}{B}",
+    "color": "B",
+    "order": 2
+  },
+  "sky scourer": {
+    "name": "Sky Scourer",
+    "mana_cost": "{1}{B}",
+    "color": "B",
+    "order": 2
+  },
+  "slaughter drone": {
+    "name": "Slaughter Drone",
+    "mana_cost": "{1}{B}",
+    "color": "B",
+    "order": 2
+  },
+  "slip through space": {
+    "name": "Slip Through Space",
+    "mana_cost": "{U}",
+    "color": "U",
+    "order": 1
+  },
+  "sludge crawler": {
+    "name": "Sludge Crawler",
+    "mana_cost": "{B}",
+    "color": "B",
+    "order": 2
+  },
+  "smothering abomination": {
+    "name": "Smothering Abomination",
+    "mana_cost": "{2}{B}{B}",
+    "color": "B",
+    "order": 2
+  },
+  "snapping voidcraw": {
+    "name": "Snapping Voidcraw",
+    "mana_cost": "{1}{G}{U}",
+    "color": "UG",
+    "order": 5
+  },
+  "sowing mycospawn": {
+    "name": "Sowing Mycospawn",
+    "mana_cost": "{3}{G}",
+    "color": "G",
+    "order": 4
+  },
+  "spawn-gang commander": {
+    "name": "Spawn-Gang Commander",
+    "mana_cost": "{3}{R}{R}",
+    "color": "R",
+    "order": 3
+  },
+  "spell shrivel": {
+    "name": "Spell Shrivel",
+    "mana_cost": "{2}{U}",
+    "color": "U",
+    "order": 1
+  },
+  "stalking drone": {
+    "name": "Stalking Drone",
+    "mana_cost": "{1}{G}",
+    "color": "G",
+    "order": 4
+  },
+  "swarm surge": {
+    "name": "Swarm Surge",
+    "mana_cost": "{2}{B}",
+    "color": "B",
+    "order": 2
+  },
+  "territory culler": {
+    "name": "Territory Culler",
+    "mana_cost": "{4}{G}",
+    "color": "G",
+    "order": 4
+  },
+  "thief of existence": {
+    "name": "Thief of Existence",
+    "mana_cost": "{1}{C}{G}",
+    "color": "G",
+    "order": 4
+  },
+  "thought harvester": {
+    "name": "Thought Harvester",
+    "mana_cost": "{3}{U}",
+    "color": "U",
+    "order": 1
+  },
+  "tide drifter": {
+    "name": "Tide Drifter",
+    "mana_cost": "{1}{U}",
+    "color": "U",
+    "order": 1
+  },
+  "titans' vanguard": {
+    "name": "Titans' Vanguard",
+    "mana_cost": "{3}{R}{G}",
+    "color": "RG",
+    "order": 5
+  },
+  "touch of the void": {
+    "name": "Touch of the Void",
+    "mana_cost": "{2}{R}",
+    "color": "R",
+    "order": 3
+  },
+  "transgress the mind": {
+    "name": "Transgress the Mind",
+    "mana_cost": "{1}{B}",
+    "color": "B",
+    "order": 2
+  },
+  "turn against": {
+    "name": "Turn Against",
+    "mana_cost": "{4}{R}",
+    "color": "R",
+    "order": 3
+  },
+  "ugin's binding": {
+    "name": "Ugin's Binding",
+    "mana_cost": "{2}{U}",
+    "color": "U",
+    "order": 1
+  },
+  "ulalek, fused atrocity": {
+    "name": "Ulalek, Fused Atrocity",
+    "mana_cost": "{C/W}{C/U}{C/B}{C/R}{C/G}",
+    "color": "WUBRG",
+    "order": 5
+  },
+  "ulamog's nullifier": {
+    "name": "Ulamog's Nullifier",
+    "mana_cost": "{2}{U}{B}",
+    "color": "UB",
+    "order": 5
+  },
+  "ulamog's reclaimer": {
+    "name": "Ulamog's Reclaimer",
+    "mana_cost": "{4}{U}",
+    "color": "U",
+    "order": 1
+  },
+  "unfathomable truths": {
+    "name": "Unfathomable Truths",
+    "mana_cost": "{4}{U}",
+    "color": "U",
+    "order": 1
+  },
+  "unnatural aggression": {
+    "name": "Unnatural Aggression",
+    "mana_cost": "{2}{G}",
+    "color": "G",
+    "order": 4
+  },
+  "unnatural endurance": {
+    "name": "Unnatural Endurance",
+    "mana_cost": "{B}",
+    "color": "B",
+    "order": 2
+  },
+  "vestige of emrakul": {
+    "name": "Vestige of Emrakul",
+    "mana_cost": "{3}{R}",
+    "color": "R",
+    "order": 3
+  },
+  "vile aggregate": {
+    "name": "Vile Aggregate",
+    "mana_cost": "{2}{R}",
+    "color": "R",
+    "order": 3
+  },
+  "vile redeemer": {
+    "name": "Vile Redeemer",
+    "mana_cost": "{2}{G}",
+    "color": "G",
+    "order": 4
+  },
+  "visions of brutality": {
+    "name": "Visions of Brutality",
+    "mana_cost": "{1}{B}",
+    "color": "B",
+    "order": 2
+  },
+  "void attendant": {
+    "name": "Void Attendant",
+    "mana_cost": "{2}{G}",
+    "color": "G",
+    "order": 4
+  },
+  "void grafter": {
+    "name": "Void Grafter",
+    "mana_cost": "{1}{G}{U}",
+    "color": "UG",
+    "order": 5
+  },
+  "voidpouncer": {
+    "name": "Voidpouncer",
+    "mana_cost": "{1}{R}",
+    "color": "R",
+    "order": 3
+  },
+  "void shatter": {
+    "name": "Void Shatter",
+    "mana_cost": "{1}{U}{U}",
+    "color": "U",
+    "order": 1
+  },
+  "wasteland strangler": {
+    "name": "Wasteland Strangler",
+    "mana_cost": "{2}{B}",
+    "color": "B",
+    "order": 2
+  },
+  "witness the end": {
+    "name": "Witness the End",
+    "mana_cost": "{3}{B}",
+    "color": "B",
+    "order": 2
+  },
+  "world breaker": {
+    "name": "World Breaker",
+    "mana_cost": "{6}{G}",
+    "color": "G",
+    "order": 4
+  },
+  "writhing chrysalis": {
+    "name": "Writhing Chrysalis",
+    "mana_cost": "{2}{R}{G}",
+    "color": "RG",
+    "order": 5
+  },
+  "wumpus aberration": {
+    "name": "Wumpus Aberration",
+    "mana_cost": "{3}{G}",
+    "color": "G",
+    "order": 4
+  }
+}
