@@ -117,7 +117,7 @@ async function run() {
         price_buy = ?,
         qty_retail = ?,
         qty_buying = ?,
-        condition_values = ?
+        condition_values = NULL
     WHERE id = ?
   `);
 
@@ -125,29 +125,33 @@ async function run() {
     INSERT INTO cards (
       id, sku, scryfall_id, name, clean_name, edition, variation,
       is_foil, rarity, price_retail, qty_retail, price_buy, qty_buying, url, condition_values,
-      collector_number, color, color_order, type_line
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      collector_number, color, color_order, type_line, is_full_art_land, is_devoid
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?, ?, ?, ?, ?)
   `);
 
   const insertFtsStmt = db.prepare(`
     INSERT INTO cards_fts (rowid, clean_name, sku) VALUES (?, ?, ?)
   `);
 
+  const basicNames = new Set([
+    'plains', 'island', 'swamp', 'mountain', 'forest', 'wastes',
+    'snow covered plains', 'snow covered island', 'snow covered swamp',
+    'snow covered mountain', 'snow covered forest'
+  ]);
+
   let updatedCount = 0;
   let insertedCount = 0;
 
   for (let i = 0; i < data.length; i++) {
     const card = data[i];
-    const retail = parseFloat(card.price_retail) || 0;
+    const retail = parseFloat(card.condition_values?.nm_price || card.price_retail) || 0;
     const buy = parseFloat(card.price_buy) || 0;
-    const condJson = card.condition_values ? JSON.stringify(card.condition_values) : null;
 
     const result = updateStmt.run(
       retail,
       buy,
       card.qty_retail || 0,
       card.qty_buying || 0,
-      condJson,
       card.id
     );
 
@@ -164,6 +168,11 @@ async function run() {
 
       const colNum = getCollectorNumber(card.sku);
       const colorData = colorMap[cName] || { color: 'C', order: 7 };
+      const isFullArtLand = basicNames.has(cName) && (
+        /full[ -]?art|borderless|showcase|retro|guru|apac|euro|unhinged|unglued|unstable|unfinity|galaxy|oil[ -]?slick|dracula|godzilla|dungeon|map|constellation|japanese|phyrexian/i.test(card.variation || '') ||
+        /unhinged|unglued|unstable|unfinity|unsanctioned|secret lair/i.test(card.edition || '')
+      ) ? 1 : 0;
+      const isDevoid = colorData.is_devoid ? 1 : 0;
 
       insertStmt.run(
         card.id,
@@ -180,11 +189,12 @@ async function run() {
         buy,
         card.qty_buying || 0,
         card.url || "",
-        condJson,
         colNum,
         colorData.color || 'C',
         colorData.order || 7,
-        typeMap[(card.name || '').toLowerCase().trim()] || null
+        typeMap[(card.name || '').toLowerCase().trim()] || null,
+        isFullArtLand,
+        isDevoid
       );
 
       try {
@@ -195,6 +205,9 @@ async function run() {
     }
   }
 
+  // Clear any remaining condition_values on cards not in today's payload
+  db.exec("UPDATE cards SET condition_values = NULL WHERE condition_values IS NOT NULL;");
+
   // Update meta table
   const metaStmt = db.prepare("INSERT OR REPLACE INTO meta (key, value) VALUES (?, ?)");
   metaStmt.run("created_at", meta.created_at || new Date().toISOString().replace('T', ' ').slice(0, 19));
@@ -204,14 +217,27 @@ async function run() {
   db.exec("COMMIT;");
 
   db.exec(`
+    DROP INDEX IF EXISTS idx_cards_edition;
+    DROP INDEX IF EXISTS idx_cards_foil;
+    DROP INDEX IF EXISTS idx_cards_rarity;
+    DROP INDEX IF EXISTS idx_cards_full_art_land;
+    DROP INDEX IF EXISTS idx_cards_is_devoid;
+    DROP INDEX IF EXISTS idx_cards_color_devoid;
     CREATE INDEX IF NOT EXISTS idx_cards_collector_number ON cards (collector_number ASC);
     CREATE INDEX IF NOT EXISTS idx_cards_color_price ON cards (color_order ASC, price_retail DESC);
     CREATE INDEX IF NOT EXISTS idx_cards_edition_collector ON cards (edition, collector_number ASC);
     CREATE INDEX IF NOT EXISTS idx_cards_edition_color_price ON cards (edition, color_order ASC, price_retail DESC);
   `);
 
-  console.log(`\nSync complete! Updated: ${updatedCount} | Inserted new: ${insertedCount} | Total in DB: ${data.length}`);
+  console.log("Running VACUUM to keep database well below GitHub 100MB limit...");
+  db.exec("VACUUM;");
+
+  const sizeMb = (fs.statSync(dbPath).size / (1024 * 1024)).toFixed(2);
+  console.log(`\nSync complete! Updated: ${updatedCount} | Inserted new: ${insertedCount} | Total in DB: ${data.length} | DB Size: ${sizeMb} MB`);
   console.log("Meta table updated with timestamp:", meta.created_at);
 }
 
-run().catch(console.error);
+run().catch(err => {
+  console.error(err);
+  process.exit(1);
+});

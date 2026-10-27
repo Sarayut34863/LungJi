@@ -34,9 +34,35 @@ jobs:
           commit_message: "chore(prices): automated daily Card Kingdom price sync"
           file_pattern: "src/data/cards.db"
 
-      - name: Deploy to Vercel
+      - name: Refresh Vercel Token & Deploy to Production
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_REFRESH_TOKEN: ${{ secrets.VERCEL_REFRESH_TOKEN }}
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
-        run: npx vercel deploy --prod --yes --token=${{ secrets.VERCEL_TOKEN }}
+          GH_PAT: ${{ secrets.GH_PAT }}
+        run: |
+          DEPLOY_TOKEN="$VERCEL_TOKEN"
+          if [ -n "$VERCEL_REFRESH_TOKEN" ]; then
+            echo "Refreshing Vercel OAuth token..."
+            RESP=$(curl -s -X POST "https://api.vercel.com/login/oauth/token" \
+              -H "Content-Type: application/x-www-form-urlencoded" \
+              --data-urlencode "client_id=cl_HYyOPBNtFMfHhaUn9L4QPfTZz6TP47bp" \
+              --data-urlencode "grant_type=refresh_token" \
+              --data-urlencode "refresh_token=$VERCEL_REFRESH_TOKEN")
+            NEW_ACCESS=$(node -e "try { const d = JSON.parse(process.argv[1]); if (d.access_token) process.stdout.write(d.access_token); } catch {}" "$RESP")
+            NEW_REFRESH=$(node -e "try { const d = JSON.parse(process.argv[1]); if (d.refresh_token) process.stdout.write(d.refresh_token); } catch {}" "$RESP")
+            if [ -n "$NEW_ACCESS" ]; then
+              echo "::add-mask::$NEW_ACCESS"
+              DEPLOY_TOKEN="$NEW_ACCESS"
+              if [ -n "$NEW_REFRESH" ] && [ -n "$GH_PAT" ]; then
+                echo "::add-mask::$NEW_REFRESH"
+                GH_TOKEN="$GH_PAT" gh secret set VERCEL_REFRESH_TOKEN --repo "$GITHUB_REPOSITORY" --body "$NEW_REFRESH"
+                GH_TOKEN="$GH_PAT" gh secret set VERCEL_TOKEN --repo "$GITHUB_REPOSITORY" --body "$NEW_ACCESS"
+                echo "Updated rotated VERCEL_REFRESH_TOKEN and VERCEL_TOKEN in GitHub Secrets."
+              fi
+            else
+              echo "Warning: OAuth refresh did not return access_token, falling back to VERCEL_TOKEN."
+            fi
+          fi
+          npx vercel deploy --prod --yes --token="$DEPLOY_TOKEN"
