@@ -66,7 +66,7 @@ export function encodePresetCode(preset: Partial<FilterPreset>): string {
       min: preset.minPrice ?? 0,
       max: preset.maxPrice ?? 100,
       ed: preset.edition && preset.edition !== "all" ? preset.edition : undefined,
-      s: preset.sortBy && preset.sortBy !== "price_desc" ? preset.sortBy : undefined,
+      s: preset.sortBy && preset.sortBy !== "name_asc" ? preset.sortBy : undefined,
     };
     const jsonStr = JSON.stringify(payload);
     // Base64 encode safe for UTF-8
@@ -99,7 +99,7 @@ export function decodePresetCode(rawCode: string): Partial<FilterPreset> | null 
       minPrice: typeof parsed.min === "number" ? parsed.min : 0,
       maxPrice: typeof parsed.max === "number" ? parsed.max : 100,
       edition: parsed.ed || "all",
-      sortBy: parsed.s || "price_desc",
+      sortBy: parsed.s || "name_asc",
     };
   } catch {
     return null;
@@ -163,7 +163,7 @@ export function syncFiltersToUrl(filters: {
     if (typeof filters.maxPrice === "number" && filters.maxPrice < 100) {
       params.set("max", String(filters.maxPrice));
     }
-    if (filters.sortBy && filters.sortBy !== "price_desc") {
+    if (filters.sortBy && filters.sortBy !== "name_asc") {
       params.set("sort", filters.sortBy);
     }
 
@@ -223,7 +223,7 @@ export function buildPresetUrl(filters: {
     if (typeof filters.maxPrice === "number" && filters.maxPrice < 100) {
       params.set("max", String(filters.maxPrice));
     }
-    if (filters.sortBy && filters.sortBy !== "price_desc") {
+    if (filters.sortBy && filters.sortBy !== "name_asc") {
       params.set("sort", filters.sortBy);
     }
 
@@ -282,7 +282,7 @@ export function parseFiltersFromUrl(): Partial<FilterPreset> | null {
       if (!isNaN(max)) result.maxPrice = max;
     }
     if (params.has("sort")) {
-      result.sortBy = params.get("sort") || "price_desc";
+      result.sortBy = params.get("sort") || "name_asc";
     }
 
     return Object.keys(result).length > 0 ? result : null;

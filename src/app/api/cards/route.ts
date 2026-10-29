@@ -25,7 +25,7 @@ export async function GET(request: NextRequest) {
     const maxPriceParam = searchParams.get("maxPrice");
     const minPrice = minPriceParam ? parseFloat(minPriceParam) : undefined;
     const maxPrice = maxPriceParam ? parseFloat(maxPriceParam) : undefined;
-    const sortBy = (searchParams.get("sortBy") as SearchParams["sortBy"]) || "price_desc";
+    const sortBy = (searchParams.get("sortBy") as SearchParams["sortBy"]) || "name_asc";
     const page = parseInt(searchParams.get("page") || "1", 10);
     const limit = parseInt(searchParams.get("limit") || "24", 10);
 

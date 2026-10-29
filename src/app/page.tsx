@@ -208,7 +208,7 @@ export const MTG_COLOR_COMBOS: Record<string, string> = {
 };
 
 export function parseSortStringToItems(sortStr: string): ActiveSortItem[] {
-  if (!sortStr) return [{ id: "price", direction: "desc" }];
+  if (!sortStr) return [{ id: "name", direction: "asc" }];
   const parts = sortStr.split(",").map((s) => s.trim().toLowerCase()).filter(Boolean);
   const items: ActiveSortItem[] = [];
   const seen = new Set<string>();
@@ -252,14 +252,14 @@ export function parseSortStringToItems(sortStr: string): ActiveSortItem[] {
     } else if (sortStr === "number_price_desc") {
       return [{ id: "number", direction: "asc" }, { id: "price", direction: "desc" }];
     }
-    return [{ id: "price", direction: "desc" }];
+    return [{ id: "name", direction: "asc" }];
   }
 
   return items;
 }
 
 export function itemsToSortString(items: ActiveSortItem[]): string {
-  if (items.length === 0) return "price_desc";
+  if (items.length === 0) return "name_asc";
   return items.map((it) => `${it.id}_${it.direction}`).join(",");
 }
 
@@ -312,7 +312,7 @@ export function DynamicMultiSortControl({
         onChange("added");
         return;
       }
-      newItems = [{ id: "price", direction: "desc" }];
+      newItems = [{ id: "name", direction: "asc" }];
     }
 
     onChange(itemsToSortString(newItems));
@@ -332,7 +332,7 @@ export function DynamicMultiSortControl({
         onChange("added");
         return;
       }
-      onChange("price_desc");
+      onChange("name_asc");
       return;
     }
     onChange(itemsToSortString(newItems));
@@ -378,7 +378,7 @@ export function DynamicMultiSortControl({
     if (onReset) {
       onReset();
     } else {
-      onChange(allowSelectionOrder ? "added" : "price_desc");
+      onChange(allowSelectionOrder ? "added" : "name_asc");
     }
   };
 
@@ -978,7 +978,7 @@ export default function HomePage() {
   const [selectedRarities, setSelectedRarities] = useState<string[]>([]);
   const [selectedColors, setSelectedColors] = useState<string[]>([]);
   const [colorMode, setColorMode] = useState<"exact" | "any">("exact");
-  const [sortBy, setSortBy] = useState<string>("price_desc");
+  const [sortBy, setSortBy] = useState<string>("name_asc");
   const [rowsPerPage, setRowsPerPage] = useState<number>(24);
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [isDrawerOpen, setIsDrawerOpen] = useState<boolean>(false);
@@ -1594,7 +1594,7 @@ export default function HomePage() {
     setSliderMax(100);
     setDebouncedMin(0);
     setDebouncedMax(100);
-    setSortBy("price_desc");
+    setSortBy("name_asc");
     setCurrentPage(1);
     setIsDrawerOpen(false);
     setIsHovered(false);
@@ -2409,7 +2409,7 @@ export default function HomePage() {
                     setCurrentPage(1);
                   }}
                   onReset={() => {
-                    setSortBy("price_desc");
+                    setSortBy("name_asc");
                     setCurrentPage(1);
                   }}
                 />

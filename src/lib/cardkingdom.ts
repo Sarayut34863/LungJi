@@ -235,7 +235,7 @@ export async function searchCards(params: SearchParams) {
     inStock = false,
     minPrice,
     maxPrice,
-    sortBy = "price_desc",
+    sortBy = "name_asc",
     page = 1,
     limit = 24,
   } = params;
@@ -438,7 +438,7 @@ export async function searchCards(params: SearchParams) {
 
   const whereClause = where.length > 0 ? `WHERE ${where.join(" AND ")}` : "";
 
-  function parseSortOrder(sort: string = "price_desc"): string {
+  function parseSortOrder(sort: string = "name_asc"): string {
     switch (sort) {
       case "price_desc":
         return "ORDER BY price_retail DESC, name ASC";
@@ -502,7 +502,7 @@ export async function searchCards(params: SearchParams) {
       return `ORDER BY ${Array.from(new Set(clauses)).join(", ")}`;
     }
 
-    return "ORDER BY price_retail DESC, name ASC";
+    return "ORDER BY name ASC";
   }
 
   const orderClause = parseSortOrder(sortBy);
