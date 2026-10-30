@@ -1389,6 +1389,16 @@ export default function HomePage() {
     loadEditions();
   }, [loadEditions]);
 
+  // Normalize legacy "... Variants" edition from old URLs/presets into its unified base edition
+  useEffect(() => {
+    if (editions.length > 0 && selectedEdition.endsWith(" Variants")) {
+      const baseCandidate = selectedEdition.slice(0, -" Variants".length);
+      if (editions.some((e) => e.name === baseCandidate)) {
+        setSelectedEdition(baseCandidate);
+      }
+    }
+  }, [editions, selectedEdition]);
+
   // Unregister legacy Service Workers to let the browser handle Scryfall caching natively via HTTP disk cache
   useEffect(() => {
     if (typeof window !== "undefined") {

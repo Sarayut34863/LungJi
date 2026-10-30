@@ -177,12 +177,27 @@ export async function getEditions() {
     "SELECT edition, COUNT(*) as count FROM cards GROUP BY edition ORDER BY count DESC"
   ).all() as unknown as { edition: string; count: number }[];
 
-  const allEditions: EditionSummary[] = rows
-    .map((r) => ({
-      name: r.edition,
-      code: editionCodes[r.edition] || undefined,
-      count: r.count,
-      isPopular: POPULAR_SET_NAMES.includes(r.edition),
+  // Merge "<Base> Variants" into "<Base>" when the base edition exists, preventing duplicate [CODE] entries in dropdown
+  const rawEditionsSet = new Set(rows.map((r) => r.edition));
+  const mergedCounts = new Map<string, number>();
+
+  for (const r of rows) {
+    if (r.edition.endsWith(" Variants")) {
+      const baseEdition = r.edition.slice(0, -" Variants".length);
+      if (rawEditionsSet.has(baseEdition)) {
+        mergedCounts.set(baseEdition, (mergedCounts.get(baseEdition) || 0) + r.count);
+        continue;
+      }
+    }
+    mergedCounts.set(r.edition, (mergedCounts.get(r.edition) || 0) + r.count);
+  }
+
+  const allEditions: EditionSummary[] = Array.from(mergedCounts.entries())
+    .map(([editionName, count]) => ({
+      name: editionName,
+      code: editionCodes[editionName] || undefined,
+      count,
+      isPopular: POPULAR_SET_NAMES.includes(editionName),
     }))
     .sort((a, b) => {
       if (a.isPopular && !b.isPopular) return -1;
@@ -225,6 +240,7 @@ export async function searchCards(params: SearchParams) {
   }
 
   const db = getDb();
+  const editionsData = await getEditions();
   const {
     edition,
     search,
@@ -253,25 +269,53 @@ export async function searchCards(params: SearchParams) {
     where.push(`NOT (clean_name IN ('Plains', 'Island', 'Swamp', 'Mountain', 'Forest', 'Wastes', 'Snow-Covered Plains', 'Snow-Covered Island', 'Snow-Covered Swamp', 'Snow-Covered Mountain', 'Snow-Covered Forest') AND is_full_art_land = 0)`);
   }
 
+  let resolvedEdition = edition || "all";
+
   if (edition && edition !== "all") {
     let targetEdition = edition.trim();
     const upper = targetEdition.toUpperCase();
+
+    // Prefer non-Variants base edition when resolving set code or edition name
+    let matchedBaseName: string | undefined;
+    let fallbackVariantName: string | undefined;
     for (const [name, code] of Object.entries(editionCodes)) {
       if (code === upper || name.toLowerCase() === targetEdition.toLowerCase()) {
-        targetEdition = name;
-        break;
+        if (!name.endsWith(" Variants")) {
+          matchedBaseName = name;
+          break;
+        } else if (!fallbackVariantName) {
+          fallbackVariantName = name;
+        }
       }
     }
-    if (params.variants === "show" && !targetEdition.endsWith(" Variants")) {
+    if (matchedBaseName) {
+      targetEdition = matchedBaseName;
+    } else if (fallbackVariantName) {
+      targetEdition = fallbackVariantName;
+    }
+
+    // Normalize legacy "<Base> Variants" to "<Base>" if the base set exists
+    if (targetEdition.endsWith(" Variants")) {
+      const baseCandidate = targetEdition.slice(0, -" Variants".length);
+      if (editionsData.editions.some((e) => e.name === baseCandidate)) {
+        targetEdition = baseCandidate;
+      }
+    }
+
+    resolvedEdition = targetEdition;
+
+    if (!targetEdition.endsWith(" Variants")) {
       const targetEditions = [
         targetEdition,
         `${targetEdition} Variants`,
-        `${targetEdition} Eternal-Legal Variants`,
       ];
-      if (targetEdition === "Modern Horizons") {
-        targetEditions.push("Modern Horizons - Retro Frames");
-      } else if (targetEdition === "The Brothers' War") {
-        targetEditions.push("The Brothers' War Retro Artifacts");
+      if (params.variants === "show") {
+        targetEditions.push(`${targetEdition} Eternal-Legal Variants`);
+        if (targetEdition === "Modern Horizons") {
+          targetEditions.push("Modern Horizons - Retro Frames");
+        } else if (targetEdition === "The Brothers' War") {
+          targetEditions.push("The Brothers' War Retro Artifacts");
+        }
       }
       where.push(`edition IN (${targetEditions.map(() => "?").join(",")})`);
       binds.push(...targetEditions);
@@ -507,7 +551,7 @@ export async function searchCards(params: SearchParams) {
 
   const orderClause = parseSortOrder(sortBy);
 
-  const hideVariants = params.variants !== "show" && !(edition && edition.trim().endsWith(" Variants")); // Default: hide variants (เอาเฉพาะใบเดียวในรุ่นเดียว ไม่เอา borderless)
+  const hideVariants = params.variants !== "show"; // Default: hide variants (เอาเฉพาะใบเดียวในรุ่นเดียว ไม่เอา borderless)
 
   let countSql = `SELECT COUNT(*) as total FROM cards ${whereClause}`;
   let dataSql = `SELECT * FROM cards ${whereClause} ${orderClause} LIMIT ? OFFSET ?`;
@@ -602,15 +646,13 @@ export async function searchCards(params: SearchParams) {
     };
   });
 
-  const editionsData = await getEditions();
-
   const responseData = {
     cards,
     total,
     page: safePage,
     limit: safeLimit,
     totalPages,
-    selectedEdition: edition || "all",
+    selectedEdition: resolvedEdition,
     meta: editionsData.meta,
   };
 
